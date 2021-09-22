@@ -1,4 +1,5 @@
 /****** Object:  Table [dbo].[A_TIME_DATE]    Script Date: 22-9-2021 17:09:31 ******/
+-- this is time date dimension (all dimensions that has to do with time are prefixed TIME. 
 SET ANSI_NULLS ON
 GO
 
