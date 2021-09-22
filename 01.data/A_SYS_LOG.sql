@@ -25,7 +25,5 @@ GO
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_SYS_LOG] ADD  CONSTRAINT [DF_SYS_LOG_level]  DEFAULT ((1)) FOR [category]
-GO
 
 
