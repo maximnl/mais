@@ -5,7 +5,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE S_1_W.[A_DIM_ACTIVITY](
+CREATE TABLE [dbo].[A_DIM_ACTIVITY](
 	[activity_id] [int] IDENTITY(1,1) NOT NULL,
 	[activity_name] [nvarchar](150) NOT NULL,
 	[activity_set] [nvarchar](250) NULL,
