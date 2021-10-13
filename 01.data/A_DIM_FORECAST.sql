@@ -7,7 +7,6 @@ GO
 
 CREATE TABLE [dbo].[A_DIM_FORECAST](
 	[forecast_id] [int] IDENTITY(1,1) NOT NULL,
-	[forecast_num] [int] NOT NULL,
 	[forecast_name] [nvarchar](150) NOT NULL,
 	[forecast_code] [nvarchar](50) NULL,
 	[forecast_guid] [nvarchar](40) NULL,
