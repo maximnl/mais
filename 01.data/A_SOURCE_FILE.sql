@@ -1,4 +1,4 @@
-/****** Object:  Table [dbo].[A_SOURCE_FILE]    Script Date: 12-10-2021 16:24:25 ******/
+/****** Object:  Table [S_1_W].[A_SOURCE_FILE]    Script Date: 27-10-2021 16:05:25 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -6,20 +6,19 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [dbo].[A_SOURCE_FILE](
-	[id] [int] IDENTITY(1,1) NOT NULL,
+	[id] [int] NOT NULL,
 	[date] [datetime] NULL,
 	[source] [nvarchar](255) NULL,
 	[import_id] [int] NULL,
 	[activity_id] [int] NULL,
 	[forecast_id] [int] NULL,
-	[site_id] [int] NULL,
 	[domain] [nvarchar](250) NULL,
 	[file_id] [int] NULL,
 	[date_created] [datetime] NULL,
-	[session] [nchar](50) NULL,
-	[A] [nvarchar](4000) NULL,
-	[B] [nvarchar](4000) NULL,
-	[C] [nvarchar](4000) NULL,
+	[session] [nvarchar](50) NULL,
+	[A] [nvarchar](255) NULL,
+	[B] [nvarchar](255) NULL,
+	[C] [nvarchar](255) NULL,
 	[D] [nvarchar](255) NULL,
 	[E] [nvarchar](255) NULL,
 	[F] [nvarchar](255) NULL,
@@ -94,11 +93,8 @@ CREATE TABLE [dbo].[A_SOURCE_FILE](
 	[BW] [nvarchar](255) NULL,
 	[BX] [nvarchar](255) NULL,
 	[BY] [nvarchar](255) NULL,
-	[BZ] [nvarchar](255) NULL,
- CONSTRAINT [PK__CORE_STG__3214EC26E3016E92] PRIMARY KEY NONCLUSTERED 
-(
-	[id] ASC
-)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
+	[BZ] [nvarchar](255) NULL
 ) ON [PRIMARY]
 GO
- 
+
+
