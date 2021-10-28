@@ -1,4 +1,4 @@
-/****** Object:  Table [dbo].[A_IMPORT]    Script Date: 12-10-2021 16:26:50 ******/
+/****** Object:  Table [S_1_W].[A_IMPORT]    Script Date: 28-10-2021 09:33:49 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -7,7 +7,7 @@ GO
 
 CREATE TABLE [dbo].[A_IMPORT](
 	[import_id] [int] IDENTITY(1,1) NOT NULL,
-	[import_num] [int] NULL,
+	[import_code] [nvarchar](50) NULL,
 	[domain] [nvarchar](50) NULL,
 	[procedure_id] [int] NULL,
 	[procedure_code] [nvarchar](150) NULL,
@@ -34,26 +34,12 @@ CREATE TABLE [dbo].[A_IMPORT](
 	[site_id] [int] NULL,
 	[date_updated] [datetime] NULL,
 	[date_created] [datetime] NULL,
- CONSTRAINT [PK_A_STG_IMPORT] PRIMARY KEY CLUSTERED 
+	[timestamp] [timestamp] NULL,
+ CONSTRAINT [PK_A_IMPORT] PRIMARY KEY CLUSTERED 
 (
 	[import_id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
-GO
-
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_domain]  DEFAULT (N'ALC') FOR [domain]
-GO
-
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF__A_STG_IMP__Activ__4984CAEC]  DEFAULT ((1)) FOR [active]
-GO
-
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF__A_STG_IMP__SiteI__4890A6B3]  DEFAULT ((1)) FOR [site_id]
-GO
-
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated]  DEFAULT (getdate()) FOR [date_updated]
-GO
-
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created]  DEFAULT (getdate()) FOR [date_created]
 GO
 
 
