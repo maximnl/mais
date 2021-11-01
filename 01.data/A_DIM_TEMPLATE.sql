@@ -8,7 +8,6 @@ GO
 CREATE TABLE [dbo].[A_DIM_TEMPLATE](
 	[template_id] [int] IDENTITY(1,1) NOT NULL,
 	[template_name] [nvarchar](150) NOT NULL,
-	[template_num] [int] NULL,
 	[template_guid] [nvarchar](40) NULL,
 	[description] [nvarchar](2000) NULL,
 	[category] [nvarchar](50) NULL,
@@ -34,14 +33,16 @@ CREATE TABLE [dbo].[A_DIM_TEMPLATE](
 	[value9_description] [nvarchar](150) NULL,
 	[value10] [nvarchar](50) NULL,
 	[value10_description] [nvarchar](150) NULL,
-	[valid_from_date] [datetime] NULL,
-	[valid_until_date] [datetime] NULL,
 	[date_updated] [datetime] NULL,
 	[timestamp] [timestamp] NULL,
+	[site_id] [int] NULL,
+	[active] [bit] NULL,
  CONSTRAINT [PK_A_DIM_TEMPLATE] PRIMARY KEY CLUSTERED 
 (
 	[template_id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
- 
+
+ALTER TABLE [dbo].[A_DIM_TEMPLATE] ADD  CONSTRAINT [DF_A_DIM_TEMPLATE_active]  DEFAULT ((1)) FOR [active]
+GO
