@@ -1,4 +1,3 @@
-/****** Object:  Table [S_1_W].[A_IMPORT]    Script Date: 28-10-2021 09:33:49 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -35,11 +34,26 @@ CREATE TABLE [dbo].[A_IMPORT](
 	[date_updated] [datetime] NULL,
 	[date_created] [datetime] NULL,
 	[timestamp] [timestamp] NULL,
- CONSTRAINT [PK_A_IMPORT] PRIMARY KEY CLUSTERED 
+ CONSTRAINT [PK_A_STG_IMPORT] PRIMARY KEY CLUSTERED 
 (
 	[import_id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_import_guid]  DEFAULT (newid()) FOR [import_guid]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_active]  DEFAULT ((1)) FOR [active]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_site_id]  DEFAULT ((1)) FOR [site_id]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created_1]  DEFAULT (getdate()) FOR [date_created]
 GO
 
 
