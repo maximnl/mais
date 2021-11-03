@@ -1,4 +1,4 @@
-/****** Object:  Table [S_1_W].[A_SOURCE_FILE]    Script Date: 27-10-2021 16:08:27 ******/
+
 SET ANSI_NULLS ON
 GO
 
@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE TABLE [dbo].[A_SOURCE_FILE](
-	[id] [int] IDENTITY(1,1) NOT NULL,
+	[id] [bigint] IDENTITY(1,1) NOT NULL,
 	[date] [datetime] NULL,
 	[source] [nvarchar](255) NULL,
 	[import_id] [int] NULL,
@@ -94,11 +94,18 @@ CREATE TABLE [dbo].[A_SOURCE_FILE](
 	[BX] [nvarchar](255) NULL,
 	[BY] [nvarchar](255) NULL,
 	[BZ] [nvarchar](255) NULL,
+	[site_id] [int] NULL,
  CONSTRAINT [PK_A_SOURCE_FILE] PRIMARY KEY CLUSTERED 
 (
 	[id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[A_SOURCE_FILE] ADD  CONSTRAINT [DF_A_SOURCE_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
+GO
+
+ALTER TABLE [dbo].[A_SOURCE_FILE] ADD  CONSTRAINT [DF_A_SOURCE_FILE_site_id]  DEFAULT ((1)) FOR [site_id]
 GO
 
 
