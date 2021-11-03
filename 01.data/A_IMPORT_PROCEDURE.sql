@@ -1,4 +1,4 @@
-/****** Object:  Table [dbo].[A_IMPORT_PROCEDURE]    Script Date: 12-10-2021 16:20:11 ******/
+ 
 SET ANSI_NULLS ON
 GO
 
@@ -8,7 +8,7 @@ GO
 CREATE TABLE [dbo].[A_IMPORT_PROCEDURE](
 	[procedure_id] [int] IDENTITY(1,1) NOT NULL,
 	[procedure_name] [nvarchar](200) NULL,
-	[procedure_guid] nvarchar (40) NULL,
+	[procedure_guid] [nvarchar](40) NULL,
 	[active] [bit] NULL,
 	[description] [nvarchar](4000) NULL,
 	[domain] [nvarchar](250) NULL,
@@ -39,6 +39,20 @@ CREATE TABLE [dbo].[A_IMPORT_PROCEDURE](
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
- 
+
+ALTER TABLE [dbo].[A_IMPORT_PROCEDURE] ADD  CONSTRAINT [DF_A_IMPORT_PROCEDURE_procedure_guid]  DEFAULT (newid()) FOR [procedure_guid]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_PROCEDURE] ADD  CONSTRAINT [DF_A_IMPORT_PROCEDURE_active_1]  DEFAULT ((1)) FOR [active]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_PROCEDURE] ADD  CONSTRAINT [DF_A_IMPORT_PROCEDURE_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_PROCEDURE] ADD  CONSTRAINT [DF_A_IMPORT_PROCEDURE_date_created_1]  DEFAULT (getdate()) FOR [date_created]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_PROCEDURE] ADD  CONSTRAINT [DF_A_IMPORT_PROCEDURE_site_id]  DEFAULT ((1)) FOR [site_id]
+GO
 
 
