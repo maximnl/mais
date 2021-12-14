@@ -1,4 +1,4 @@
-/****** Object:  Table [S_1_W].[A_IMPORT_FILE]    Script Date: 28-10-2021 10:53:18 ******/
+/****** Object:  Table [dbo].[A_IMPORT_FILE]    Script Date: 14-12-2021 15:58:17 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -26,6 +26,8 @@ CREATE TABLE [dbo].[A_IMPORT_FILE](
 	[site_id] [int] NULL,
 	[active] [bit] NULL,
 	[file_guid] [nvarchar](40) NULL,
+	[tab] [nvarchar](150) NULL,
+	[records] [int] NULL,
 	[date_created] [datetime] NULL,
 	[date_updated] [datetime] NULL,
  CONSTRAINT [PK_A_IMPORT_FILE] PRIMARY KEY CLUSTERED 
@@ -33,6 +35,18 @@ CREATE TABLE [dbo].[A_IMPORT_FILE](
 	[file_id] ASC
 )WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_active]  DEFAULT ((1)) FOR [active]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_file_guid]  DEFAULT (newid()) FOR [file_guid]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
+GO
+
+ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_updated]  DEFAULT (getdate()) FOR [date_updated]
 GO
 
 
