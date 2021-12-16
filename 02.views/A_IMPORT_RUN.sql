@@ -8,13 +8,13 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE or ALTER view [dbo].[A_IMPORT_RUN] as 
+CREATE or ALTER view [S_1_W].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
 		,P.[procedure_code] 
 	  	,P.app
-	 	,case when isnull(I.commands,'')>'' then I.commands else P.commands end as commands     
+	 	,coalesce( I.commands,' ', P.commands)   as commands     
      	,I.[activity_id]
      	,[forecast_id]
      	,case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end as [p1]
@@ -40,8 +40,8 @@ SELECT  I.import_id
  		,A.activity_name
 		,A.activity_set
   FROM [S_1_W].[A_IMPORT] I
-	  inner join [dbo].[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
-	  inner join [dbo].[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
+	  inner join [S_1_W].[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
+	  inner join [S_1_W].[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
  
 
 GO
