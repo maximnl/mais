@@ -1,6 +1,4 @@
- 
-
-/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 16-12-2021 12:37:02 ******/
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 21-12-2021 17:05:27 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -8,13 +6,14 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 
-CREATE or ALTER view [dbo].[A_IMPORT_RUN] as 
+
+ CREATE OR ALTER   view [dbo].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
 		,P.[procedure_code] 
 	  	,P.app
-	 	,coalesce( I.commands,' ', P.commands)   as commands     
+	 	,trim(isnull(P.commands,''))+trim(isnull(I.commands,''))   as commands     
      	,I.[activity_id]
      	,[forecast_id]
      	,case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end as [p1]
@@ -23,7 +22,7 @@ SELECT  I.import_id
 		,case when isnull(I.[p4],'')>'' then I.[p4] else P.[p4] end as [p4]
 		,case when isnull(I.[p5],'')>'' then I.[p5] else P.[p5] end as [p5]
      	,isnull(P.[sort_order],1) *1000+ isnull(I.[sort_order],0) sort_order
-     	,coalesce(I.[description],P.description) as description
+     	,'' as description
      	,case when P.[days_back] >'' then dateadd(D,-1* case when isnull(I.[days_back],'')>'' then I.[days_back] else P.[days_back] end ,getdate()) else
 			isnull(I.[date_import_from], '1900-01-01') end date_import_from
      	,case when P.[days_forward] >'' then dateadd(D, 1 * case when isnull(I.[days_forward],'')>'' then I.[days_forward] else P.[days_forward] end,getdate()) else 
@@ -39,7 +38,7 @@ SELECT  I.import_id
 	  	,case when isnull(I.[group_by],'')>'' then I.[group_by] else P.[group_by] end group_by
  		,A.activity_name
 		,A.activity_set
-  FROM [S_1_W].[A_IMPORT] I
+  FROM [dbo].[A_IMPORT] I
 	  inner join [dbo].[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
 	  inner join [dbo].[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
  
