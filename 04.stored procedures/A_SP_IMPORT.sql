@@ -1,4 +1,4 @@
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-12-2021 09:29:40 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-12-2021 11:07:15 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -135,8 +135,8 @@ BEGIN
  		'DELETE
  		FROM '+ @fact_day +'  
  		WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) +''' 
- 		AND activityid = ' +  convert(nvarchar(max),@activity_id) + ' 
- 		AND forecastid = ' +  convert(nvarchar(max),@forecast_id) ;
+ 		AND activity_id = ' +  convert(nvarchar(max),@activity_id) + ' 
+ 		AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) ;
   
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand ELSE EXEC( @sqlCommand);
@@ -156,7 +156,7 @@ BEGIN
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day +' (
- 		[date],activityid,forecastid,importid,' + @fields_target + ')
+ 		[date],activity_id,forecast_id,import_id,' + @fields_target + ')
    		SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
    		+ ',' + @fields_source + 
@@ -175,14 +175,14 @@ BEGIN
 	END CATCH;   
 
 	IF @commands  like '%-SET_IMPORT_ID%' BEGIN 
-		SET @sqlCommand = 'UPDATE '+ @source +' SET importid='+ convert(nvarchar(max),@import_id) +' WHERE ' + @filter  
+		SET @sqlCommand = 'UPDATE '+ @source +' SET import_id='+ convert(nvarchar(max),@import_id) +' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' 
 		BEGIN TRY
 			EXEC( @sqlCommand)
  		END TRY
    		BEGIN CATCH  
    			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT SET ERROR' ,@session_id ,@import_id ,'UPDATE importid',@sqlCommand
+			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT SET ERROR' ,@session_id ,@import_id ,'UPDATE import_id',@sqlCommand
 		END CATCH;   
 	END
 
