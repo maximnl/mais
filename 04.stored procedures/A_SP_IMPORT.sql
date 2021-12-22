@@ -1,4 +1,4 @@
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 21-12-2021 12:44:12 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-12-2021 09:29:40 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -10,13 +10,12 @@ ALTER PROCEDURE [dbo].[A_SP_IMPORT]
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
 ,@procedure_name nvarchar(200)='A_SP_ALC_IMPORT'
-,@schema nvarchar(200) = '[dbo].'
 AS
 BEGIN
 
     SET NOCOUNT ON;
-	DECLARE @fact_day nvarchar(200)=@schema+'[A_FACT_DAY]'
-	DECLARE @fact_intraday nvarchar(200)=@schema+'[A_FACT_INTRADAY]'
+	DECLARE @fact_day nvarchar(200)='[dbo].[A_FACT_DAY]'
+	DECLARE @fact_intraday nvarchar(200)='[dbo].[A_FACT_INTRADAY]'
 
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
     DECLARE @import_id int
@@ -113,7 +112,7 @@ BEGIN
 				SET @date_import_until=@date_source_max
 			END
 
-			IF @commands like '%-SUMFIELDS%' set @fields_source= concat('SUM(',replace(@fields_source,',','),SUM('),')')
+			IF @commands like '%-SUMFIELDS%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
 
 			set @data = left((concat(concat('{"p1":"',@p1,'",'),
 			concat('"p2":"',@p2,'",'),
@@ -154,7 +153,7 @@ BEGIN
 	--------------------------------------------------------------------------------------------------------------------------
 	--  INSERT TO DAY
 	-------------------------------------------------------------------------------------
- 		IF @commands not like '%-NOGROUPBY%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END
+ 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day +' (
  		[date],activityid,forecastid,importid,' + @fields_target + ')
