@@ -60,7 +60,7 @@ BEGIN
 	  ,concat(@commands,' ',commands)
 	  ,procedure_name
     FROM     [dbo].[A_IMPORT_RUN] 
-    WHERE    ([procedure_name] like @procedure_name or procedure_code like @procedure_name) and (activity_id=@activity_id or @activity_id=0)
+    WHERE    ([procedure_name] like @procedure_name ) and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
 	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
