@@ -1,4 +1,4 @@
-/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 21-12-2021 17:05:27 ******/
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 3-1-2022 15:28:58 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -7,7 +7,8 @@ GO
 
 
 
- CREATE OR ALTER   view [dbo].[A_IMPORT_RUN] as 
+
+create or alter   view [dbo].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
