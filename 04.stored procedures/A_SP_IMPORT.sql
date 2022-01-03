@@ -1,11 +1,11 @@
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-12-2021 11:07:15 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 3-1-2022 15:25:57 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
 -- template stored procedure for loading data from source tables
-ALTER PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -60,7 +60,7 @@ BEGIN
 	  ,concat(@commands,' ',commands)
 	  ,procedure_name
     FROM     [dbo].[A_IMPORT_RUN] 
-    WHERE    ([procedure_name] like @procedure_name ) and (activity_id=@activity_id or @activity_id=0)
+    WHERE    ([procedure_name] like @procedure_name or procedure_code like @procedure_name) and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
 	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
@@ -112,7 +112,7 @@ BEGIN
 				SET @date_import_until=@date_source_max
 			END
 
-			IF @commands like '%-SUMFIELDS%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
+			IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
 
 			set @data = left((concat(concat('{"p1":"',@p1,'",'),
 			concat('"p2":"',@p2,'",'),
@@ -139,7 +139,10 @@ BEGIN
  		AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) ;
   
  		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand ELSE EXEC( @sqlCommand);
+			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
+			IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+
 			SET @rows= @@ROWCOUNT
 			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
 			IF @commands like '%-LOG_DELETE%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
@@ -164,7 +167,10 @@ BEGIN
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
             
  		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand ELSE EXEC( @sqlCommand);
+			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
+			IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+
 			SET @rows= @@ROWCOUNT
 			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
 			IF @commands like '%-LOG_INSERT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
