@@ -1,11 +1,11 @@
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 3-1-2022 15:25:57 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 4-1-2022 11:08:12 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
 -- template stored procedure for loading data from source tables
-CREATE PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE OR ALTER PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -156,7 +156,7 @@ BEGIN
 	--------------------------------------------------------------------------------------------------------------------------
 	--  INSERT TO DAY
 	-------------------------------------------------------------------------------------
- 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END
+ 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END  ELSE SET @groupby=''  
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day +' (
  		[date],activity_id,forecast_id,import_id,' + @fields_target + ')
