@@ -1,4 +1,5 @@
-/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 3-1-2022 15:28:58 ******/
+
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 18-1-2022 11:56:07 ******/
 SET ANSI_NULLS ON
 GO
 
@@ -8,7 +9,7 @@ GO
 
 
 
-create or alter   view [dbo].[A_IMPORT_RUN] as 
+CREATE OR ALTER   VIEW [A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
@@ -16,7 +17,7 @@ SELECT  I.import_id
 	  	,P.app
 	 	,trim(isnull(P.commands,''))+trim(isnull(I.commands,''))   as commands     
      	,I.[activity_id]
-     	,[forecast_id]
+     	,I.[forecast_id]
      	,case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end as [p1]
      	,case when isnull(I.[p2],'')>'' then I.[p2] else P.[p2] end as [p2]
 		,case when isnull(I.[p3],'')>'' then I.[p3] else P.[p3] end as [p3]
@@ -39,9 +40,11 @@ SELECT  I.import_id
 	  	,case when isnull(I.[group_by],'')>'' then I.[group_by] else P.[group_by] end group_by
  		,A.activity_name
 		,A.activity_set
-  FROM [dbo].[A_IMPORT] I
-	  inner join [dbo].[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
-	  inner join [dbo].[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
+  FROM [A_IMPORT] I
+	  inner join [A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
+	  inner join [A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
+	  inner join [A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
+	  where I.active=1 and P.active=1 and A.active=1 and F.active=1
  
 
 GO
