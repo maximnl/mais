@@ -1,4 +1,4 @@
-/****** Object:  Table [dbo].[A_SYS_LOG]    Script Date: 22-9-2021 18:10:44 ******/
+
 SET ANSI_NULLS ON
 GO
 
@@ -13,7 +13,7 @@ GO
 -- [data] will keep anything , messages, parameters. there is [dbo].[A_FN_SYS_ErrorJson] function that you can use 
 -- to store data in json format
 -- [site_id] is for multisite/domains/business situations 
- CREATE TABLE [dbo].[A_SYS_LOG](
+ CREATE TABLE [A_SYS_LOG](
 	[category] [varchar](50) NULL,
 	[session_id] [varchar](50) NULL,
 	[object_id] [varchar](50) NULL,
