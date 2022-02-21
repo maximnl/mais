@@ -1,11 +1,11 @@
-/****** Object:  Table [dbo].[A_IMPORT_FILE]    Script Date: 14-12-2021 15:58:17 ******/
+
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[A_IMPORT_FILE](
+CREATE TABLE [A_IMPORT_FILE](
 	[file_id] [int] IDENTITY(1,1) NOT NULL,
 	[file_name] [nvarchar](200) NULL,
 	[source] [nvarchar](50) NULL,
@@ -37,16 +37,16 @@ CREATE TABLE [dbo].[A_IMPORT_FILE](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_active]  DEFAULT ((1)) FOR [active]
+ALTER TABLE [A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_active]  DEFAULT ((1)) FOR [active]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_file_guid]  DEFAULT (newid()) FOR [file_guid]
+ALTER TABLE [A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_file_guid]  DEFAULT (newid()) FOR [file_guid]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
+ALTER TABLE [A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_updated]  DEFAULT (getdate()) FOR [date_updated]
+ALTER TABLE [A_IMPORT_FILE] ADD  CONSTRAINT [DF_A_IMPORT_FILE_date_updated]  DEFAULT (getdate()) FOR [date_updated]
 GO
 
 
