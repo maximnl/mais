@@ -1,11 +1,10 @@
-/****** Object:  Table [dbo].[A_IMPORT]    Script Date: 16-12-2021 12:33:39 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[A_IMPORT](
+CREATE TABLE [A_IMPORT](
 	[import_id] [int] IDENTITY(1,1) NOT NULL,
 	[import_code] [nvarchar](50) NULL,
 	[domain] [nvarchar](50) NULL,
@@ -48,16 +47,16 @@ CREATE TABLE [dbo].[A_IMPORT](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_active]  DEFAULT ((1)) FOR [active]
+ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_active]  DEFAULT ((1)) FOR [active]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
+ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created_1]  DEFAULT (getdate()) FOR [date_created]
+ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created_1]  DEFAULT (getdate()) FOR [date_created]
 GO
 
-ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_import_guid]  DEFAULT (newid()) FOR [import_guid]
+ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_import_guid]  DEFAULT (newid()) FOR [import_guid]
 GO
 
 
