@@ -4,7 +4,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[A_DIM_ACTIVITY](
+CREATE TABLE [A_DIM_ACTIVITY](
 	[activity_id] [int] IDENTITY(1,1) NOT NULL,
 	[activity_name] [nvarchar](150) NOT NULL,
 	[activity_set] [nvarchar](250) NULL,
@@ -41,13 +41,10 @@ CREATE TABLE [dbo].[A_DIM_ACTIVITY](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_DIM_ACTIVITY] ADD  CONSTRAINT [DF_A_DIM_ACTIVITY_site_id]  DEFAULT ((1)) FOR [site_id]
+ALTER TABLE [A_DIM_ACTIVITY] ADD  CONSTRAINT [DF_A_DIM_ACTIVITY_activity_guid]  DEFAULT (newid()) FOR [activity_guid]
 GO
 
-ALTER TABLE [dbo].[A_DIM_ACTIVITY] ADD  CONSTRAINT [DF_A_DIM_ACTIVITY_activity_guid]  DEFAULT (newid()) FOR [activity_guid]
-GO
-
-ALTER TABLE [dbo].[A_DIM_ACTIVITY] ADD  CONSTRAINT [DF_A_DIM_ACTIVITY_active]  DEFAULT ((1)) FOR [active]
+ALTER TABLE [A_DIM_ACTIVITY] ADD  CONSTRAINT [DF_A_DIM_ACTIVITY_active]  DEFAULT ((1)) FOR [active]
 GO
 
 
