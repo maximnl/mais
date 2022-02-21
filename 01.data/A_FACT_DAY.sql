@@ -4,7 +4,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [DBO].[A_FACT_DAY](
+CREATE TABLE [A_FACT_DAY](
 	[date] [datetime] NOT NULL,
 	[activity_id] [int] NOT NULL,
 	[forecast_id] [int] NOT NULL,
@@ -23,6 +23,6 @@ CREATE TABLE [DBO].[A_FACT_DAY](
 	[date_updated] [datetime] NULL,
 ) ON [PRIMARY]
 
-ALTER TABLE [S_1_W].[A_FACT_DAY] ADD  CONSTRAINT [DF_A_FACT_DAY_date_updated]  DEFAULT (getdate()) FOR [date_updated]
+ALTER TABLE [A_FACT_DAY] ADD  CONSTRAINT [DF_A_FACT_DAY_date_updated]  DEFAULT (getdate()) FOR [date_updated]
 GO
 
