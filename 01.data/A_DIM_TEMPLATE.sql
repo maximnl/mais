@@ -1,11 +1,10 @@
-/****** Object:  Table [dbo].[A_DIM_TEMPLATE]    Script Date: 12-10-2021 16:16:14 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[A_DIM_TEMPLATE](
+CREATE TABLE [A_DIM_TEMPLATE](
 	[template_id] [int] IDENTITY(1,1) NOT NULL,
 	[template_name] [nvarchar](150) NOT NULL,
 	[template_guid] [nvarchar](40) NULL,
@@ -44,5 +43,5 @@ CREATE TABLE [dbo].[A_DIM_TEMPLATE](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_DIM_TEMPLATE] ADD  CONSTRAINT [DF_A_DIM_TEMPLATE_active]  DEFAULT ((1)) FOR [active]
+ALTER TABLE [A_DIM_TEMPLATE] ADD  CONSTRAINT [DF_A_DIM_TEMPLATE_active]  DEFAULT ((1)) FOR [active]
 GO
