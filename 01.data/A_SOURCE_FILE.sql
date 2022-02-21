@@ -5,7 +5,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE TABLE [dbo].[A_SOURCE_FILE](
+CREATE TABLE [A_SOURCE_FILE](
 	[id] [bigint] IDENTITY(1,1) NOT NULL,
 	[date] [datetime] NULL,
 	[source] [nvarchar](255) NULL,
@@ -15,7 +15,6 @@ CREATE TABLE [dbo].[A_SOURCE_FILE](
 	[domain] [nvarchar](250) NULL,
 	[file_id] [int] NULL,
 	[date_created] [datetime] NULL,
-	[session] [nvarchar](50) NULL,
 	[A] [nvarchar](255) NULL,
 	[B] [nvarchar](255) NULL,
 	[C] [nvarchar](255) NULL,
@@ -95,6 +94,7 @@ CREATE TABLE [dbo].[A_SOURCE_FILE](
 	[BY] [nvarchar](255) NULL,
 	[BZ] [nvarchar](255) NULL,
 	[site_id] [int] NULL,
+	[session] [nvarchar](50) NULL
  CONSTRAINT [PK_A_SOURCE_FILE] PRIMARY KEY CLUSTERED 
 (
 	[id] ASC
@@ -102,10 +102,8 @@ CREATE TABLE [dbo].[A_SOURCE_FILE](
 ) ON [PRIMARY]
 GO
 
-ALTER TABLE [dbo].[A_SOURCE_FILE] ADD  CONSTRAINT [DF_A_SOURCE_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
+ALTER TABLE [A_SOURCE_FILE] ADD  CONSTRAINT [DF_A_SOURCE_FILE_date_created]  DEFAULT (getdate()) FOR [date_created]
 GO
 
-ALTER TABLE [dbo].[A_SOURCE_FILE] ADD  CONSTRAINT [DF_A_SOURCE_FILE_site_id]  DEFAULT ((1)) FOR [site_id]
-GO
 
 
