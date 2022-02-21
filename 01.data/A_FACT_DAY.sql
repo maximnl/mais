@@ -23,6 +23,4 @@ CREATE TABLE [A_FACT_DAY](
 	[date_updated] [datetime] NULL,
 ) ON [PRIMARY]
 
-ALTER TABLE [A_FACT_DAY] ADD  CONSTRAINT [DF_A_FACT_DAY_date_updated]  DEFAULT (getdate()) FOR [date_updated]
-GO
 
