@@ -1,11 +1,14 @@
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 4-1-2022 11:08:12 ******/
+ 
 SET ANSI_NULLS OFF
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
+
+
 -- template stored procedure for loading data from source tables
-CREATE OR ALTER PROCEDURE [dbo].[A_SP_IMPORT]
+ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -14,8 +17,8 @@ AS
 BEGIN
 
     SET NOCOUNT ON;
-	DECLARE @fact_day nvarchar(200)='[dbo].[A_FACT_DAY]'
-	DECLARE @fact_intraday nvarchar(200)='[dbo].[A_FACT_INTRADAY]'
+	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]'
+	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]'
 
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
     DECLARE @import_id int
@@ -24,7 +27,7 @@ BEGIN
 	DECLARE @date_import_from date='1900-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_import_until date='9999-01-01'
 	DECLARE @fields_source varchar(2000)='' -- source fields
-	DECLARE @fields_target varchar(2000)=''  -- target fields value1,value2...
+	DECLARE @fields_target varchar(2000)=''  -- target fields value1
 	DECLARE @schedule varchar(2000)=''
 	DECLARE @source varchar(2000)=''
 	DECLARE @group_by varchar(2000)=''
@@ -39,6 +42,8 @@ BEGIN
 	DECLARE @groupby varchar(2000)=''
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
+	DECLARE @intraday_join varchar(2000)=''
+	DECLARE @intraday_duration varchar(5)=''
     
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
@@ -97,6 +102,17 @@ BEGIN
 	WHILE @@FETCH_STATUS = 0 
 
    		BEGIN 
+			
+			-- if import has intraday data update, we use p1 and p2 standard for some intraday parameters
+			IF @commands  like '%-INTRADAY%' BEGIN  
+
+				SET @intraday_join= case when @p1>'' then @p1 else 'inner join a_time_interval I on interval_id=I.interval_id' end
+				SET @intraday_duration = case when @p2>'' then @p2 else '30' end  -- standard duration of the interval is 30 min
+
+			END
+
+			 
+
 
 			IF @commands  like '%-DELTA%' BEGIN 
 
@@ -156,7 +172,7 @@ BEGIN
 	--------------------------------------------------------------------------------------------------------------------------
 	--  INSERT TO DAY
 	-------------------------------------------------------------------------------------
- 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END  ELSE SET @groupby=''  
+ 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END ELSE SET @groupby=''
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day +' (
  		[date],activity_id,forecast_id,import_id,' + @fields_target + ')
@@ -192,6 +208,64 @@ BEGIN
 		END CATCH;   
 	END
 
+
+	IF @commands  like '%-INTRADAY%' BEGIN  
+	----------------------------------------------------------------------------------------------------------------------
+	--  CLEAN INTRADAY
+	--------------------------------------------------------------------------------
+ 		
+		SET @sqlCommand = 
+ 		'DELETE
+ 		FROM '+ @fact_intraday +'  
+ 		WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) +''' 
+ 		AND activity_id = ' +  convert(nvarchar(max),@activity_id) + ' 
+ 		AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) ;
+  
+ 		BEGIN TRY
+			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
+			IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+
+			SET @rows= @@ROWCOUNT
+			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE INTRADAY',@rows  
+			IF @commands like '%-LOG_DELETE%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY INTRADAY',@sqlCommand  
+
+ 		END TRY
+ 		BEGIN CATCH  
+			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
+			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN INTRADAY',@sqlCommand  
+ 		END CATCH;   
+
+	--------------------------------------------------------------------------------------------------------------------------
+	--  INSERT TO INTRADAY
+	-------------------------------------------------------------------------------------
+ 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ', I.interval_id') END ELSE SET @groupby=''
+
+		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday +' (
+ 		[date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ')
+   		SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
+   		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
+   		+ ',I.interval_id, '+ convert(varchar(5),@intraday_duration) + ', ' + @fields_source + 
+ 		' FROM '+ @source + ' ' + @intraday_join + ' WHERE ' + @filter  
+		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
+            
+ 		BEGIN TRY
+			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
+			IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+
+			SET @rows= @@ROWCOUNT
+			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
+			IF @commands like '%-LOG_INSERT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
+ 		END TRY
+   		BEGIN CATCH  
+   			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
+			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+	END CATCH;   
+
+
+	END -- end if intraday
+
 	 
 	  
 
@@ -224,3 +298,8 @@ BEGIN
 	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
 
 END
+
+
+GO
+
+
