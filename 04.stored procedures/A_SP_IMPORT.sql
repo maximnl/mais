@@ -1,7 +1,7 @@
- 
+
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-3-2022 15:26:34 ******/
 SET ANSI_NULLS OFF
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
@@ -43,7 +43,7 @@ BEGIN
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
 	DECLARE @intraday_join varchar(2000)=''
-	DECLARE @intraday_duration varchar(5)=''
+	DECLARE @intraday_duration varchar(2000)=''
     
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
@@ -245,7 +245,7 @@ BEGIN
  		[date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ')
    		SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
-   		+ ',I.interval_id, '+ convert(varchar(5),@intraday_duration) + ', ' + @fields_source + 
+   		+ ',I.interval_id, max('+ convert(varchar(2000),@intraday_duration) + '), ' + @fields_source + 
  		' FROM '+ @source + ' ' + @intraday_join + ' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
             
@@ -298,8 +298,5 @@ BEGIN
 	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
 
 END
-
-
-GO
 
 
