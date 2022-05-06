@@ -1,5 +1,3 @@
-
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 22-3-2022 15:26:34 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -8,20 +6,20 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE OR ALTER   PROCEDURE [A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
-,@procedure_name nvarchar(200)='A_SP_ALC_IMPORT'
+,@procedure_name nvarchar(200)='A_SP_IMPORT'
+,@site_id int =0
+,@import_id int =0
 AS
 BEGIN
 
     SET NOCOUNT ON;
 	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]'
 	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]'
-
-    DECLARE @sqlCommand NVARCHAR(MAX) -- 
-    DECLARE @import_id int
+        DECLARE @sqlCommand NVARCHAR(MAX) -- 
 	DECLARE @forecast_id int = 0
 	DECLARE @filter nvarchar(4000)='' --serrie='HACOBU' and LandGroepCode='BLG'
 	DECLARE @date_import_from date='1900-01-01' -- calculated by the import query using imports and procedures fields
@@ -43,7 +41,8 @@ BEGIN
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
 	DECLARE @intraday_join varchar(2000)=''
-	DECLARE @intraday_duration varchar(2000)=''
+	DECLARE @intraday_duration varchar(5)=''
+        DECLARE @output nvarchar(max)='';
     
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
@@ -63,12 +62,13 @@ BEGIN
       ,[source]
       ,[group_by]
 	  ,concat(@commands,' ',commands)
-	  ,procedure_name
-    FROM     [dbo].[A_IMPORT_RUN] 
-    WHERE    ([procedure_name] like @procedure_name or procedure_code like @procedure_name) and (activity_id=@activity_id or @activity_id=0)
+	  ,[procedure_name]
+    FROM   MAIS_ANWB_P.[A_IMPORT_RUN]
+    WHERE   (import_id=@import_id or @import_id=0) AND site_id=@site_id 
+    AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
-	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
+	EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
 	SET @start_time     = GETDATE()
 
 	
@@ -111,9 +111,6 @@ BEGIN
 
 			END
 
-			 
-
-
 			IF @commands  like '%-DELTA%' BEGIN 
 
 				
@@ -142,31 +139,33 @@ BEGIN
 			set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target)
 
 		--@category --@session_id --@object_id --@step_id -- data
-		EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT RUN' ,@session_id  ,@import_id  , @procedure_name ,@data  
+		EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT RUN' ,@session_id  ,@import_id  , @procedure_name ,@data  
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN DAY
 	--------------------------------------------------------------------------------
  		
 		SET @sqlCommand = 
- 		'DELETE
- 		FROM '+ @fact_day +'  
- 		WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) +''' 
- 		AND activity_id = ' +  convert(nvarchar(max),@activity_id) + ' 
- 		AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) ;
+ 		'DELETE FROM '+ @fact_day +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + ''' AND activity_id =' +  convert(nvarchar(max),@activity_id) 
++ '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id)
++ '	AND site_id = ' +  convert(nvarchar(max),@site_id)  ;
   
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
-			IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
-
-			SET @rows= @@ROWCOUNT
-			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
-			IF @commands like '%-LOG_DELETE%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
-
+            SET @output=@output+'-- DELETING DAY DATA <br>'+@sqlCommand+'<br><br>';
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+            BEGIN
+                EXEC( @sqlCommand)
+                SET @rows= @@ROWCOUNT          
+                IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+                SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
+                IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
+                IF @commands like '%-LOG_DELETE%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
+            END
  		END TRY
  		BEGIN CATCH  
-			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  
+			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -174,66 +173,61 @@ BEGIN
 	-------------------------------------------------------------------------------------
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END ELSE SET @groupby=''
 
-		SET @sqlCommand = 'INSERT INTO '+ @fact_day +' (
- 		[date],activity_id,forecast_id,import_id,' + @fields_target + ')
-   		SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
+		SET @sqlCommand = 'INSERT INTO '+ @fact_day 
+        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) 
+        SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
-   		+ ',' + @fields_source + 
+   		+ ',' + @fields_source +','+ convert(nvarchar(max),@site_id) +
  		' FROM '+ @source +' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
             
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
-			IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
-
-			SET @rows= @@ROWCOUNT
-			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
-			IF @commands like '%-LOG_INSERT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
- 		END TRY
+            SET @output=@output+ '-- INSERTING DAY DATA <br>'+ @sqlCommand + '<br><br>';
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+            BEGIN 
+                EXEC( @sqlCommand)
+                SET @rows= @@ROWCOUNT
+                IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+                IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
+                IF @commands like '%-LOG_INSERT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
+                SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
+            END
+END TRY
    		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+   			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
 	END CATCH;   
-
-	IF @commands  like '%-SET_IMPORT_ID%' BEGIN 
-		SET @sqlCommand = 'UPDATE '+ @source +' SET import_id='+ convert(nvarchar(max),@import_id) +' WHERE ' + @filter  
-		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' 
-		BEGIN TRY
-			EXEC( @sqlCommand)
- 		END TRY
-   		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT SET ERROR' ,@session_id ,@import_id ,'UPDATE import_id',@sqlCommand
-		END CATCH;   
-	END
-
 
 	IF @commands  like '%-INTRADAY%' BEGIN  
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN INTRADAY
-	--------------------------------------------------------------------------------
- 		
+	--------------------------------------------------------------------------------	
 		SET @sqlCommand = 
- 		'DELETE
- 		FROM '+ @fact_intraday +'  
- 		WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) +''' 
- 		AND activity_id = ' +  convert(nvarchar(max),@activity_id) + ' 
- 		AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) ;
+ 		'DELETE	FROM '+ @fact_intraday 
+        +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' 
+        + convert(char(10),@date_import_until,126) +'''	AND activity_id =' +  convert(nvarchar(max),@activity_id) 
+        + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) 
+        + '	AND site_id = ' +  convert(nvarchar(max),@site_id) ;
   
  		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
-			IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
-
-			SET @rows= @@ROWCOUNT
-			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE INTRADAY',@rows  
-			IF @commands like '%-LOG_DELETE%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY INTRADAY',@sqlCommand  
-
+			IF @commands like '%-PRINT%' PRINT @sqlCommand;
+            SET @output=@output+ '-- DELETING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+            BEGIN
+                EXEC( @sqlCommand)
+                SET @rows= @@ROWCOUNT
+			    IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+                SET @output=@output+'intraday records deleted ' + convert(varchar(10),@rows)+'<br><br>'  
+    			IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE INTRADAY',@rows  
+	    		IF @commands like '%-LOG_DELETE%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY INTRADAY',@sqlCommand  
+            END
  		END TRY
  		BEGIN CATCH  
-			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN INTRADAY',@sqlCommand  
+			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN INTRADAY',@sqlCommand  
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -241,26 +235,32 @@ BEGIN
 	-------------------------------------------------------------------------------------
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ', I.interval_id') END ELSE SET @groupby=''
 
-		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday +' (
- 		[date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ')
-   		SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
-   		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
-   		+ ',I.interval_id, max('+ convert(varchar(2000),@intraday_duration) + '), ' + @fields_source + 
- 		' FROM '+ @source + ' ' + @intraday_join + ' WHERE ' + @filter  
+		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday 
+        +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id)'
+        +' SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
+   		+ ',' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
+   		+ ',I.interval_id, '+ convert(varchar(5),@intraday_duration) + ',' + @fields_source 
+        + ',' + convert(nvarchar(max),@site_id) 
+ 		+ ' FROM '+ @source + ' ' + @intraday_join + ' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
             
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from EXEC( @sqlCommand)
-			IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
-
-			SET @rows= @@ROWCOUNT
-			IF @commands like '%-LOG_ROWCOUNT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
-			IF @commands like '%-LOG_INSERT%' EXEC [dbo].[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
- 		END TRY
+            SET @output=@output+ '-- DELETING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
+			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+            BEGIN
+                EXEC( @sqlCommand);
+                SET @rows= @@ROWCOUNT;
+			    IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+                SET @output=@output+'intraday records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
+			    IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
+			    IF @commands like '%-LOG_INSERT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
+            END
+        END TRY
    		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',[dbo].[A_FN_SYS_ErrorJson]()) 
-			EXEC [dbo].[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+   			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
 	END CATCH;   
 
 
@@ -295,8 +295,11 @@ BEGIN
 	DEALLOCATE TAB_CURSOR
 
 	SET @data=DATEDIFF(second,@start_time,getdate())
-	EXEC [dbo].[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
+	EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
+
+    IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
 
 
+GO
