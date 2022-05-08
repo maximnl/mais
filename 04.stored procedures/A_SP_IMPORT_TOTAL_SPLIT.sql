@@ -17,7 +17,7 @@ AS
 BEGIN
 
     SET NOCOUNT ON;
-	DECLARE @fact_day nvarchar(200)='MAIS_ANWB_A.A_FACT_DAY'
+	DECLARE @fact_day nvarchar(200)='A_FACT_DAY'
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
 	DECLARE @forecast_id int = 0
 	DECLARE @filter nvarchar(4000)='' --serrie='HACOBU' and LandGroepCode='BLG'
@@ -62,14 +62,14 @@ BEGIN
       ,[group_by]
 	  ,concat(@commands,' ',commands)
 	  ,[procedure_name]
-    FROM   MAIS_ANWB_A.[A_IMPORT_RUN]
+    FROM   [A_IMPORT_RUN]
     WHERE   (import_id=@import_id or @import_id=0) 
 AND site_id=@site_id 
 AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) 
 and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
-	EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
+	EXEC [A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
 	SET @start_time     = GETDATE()
 
 ----------------------------------------------
@@ -103,12 +103,12 @@ and (activity_id=@activity_id or @activity_id=0)
    		BEGIN 
 			
 		SET @sqlCommand = 'select @date_source_min = isnull(min(F.date),''9999-12-31'') 
-        FROM MAIS_ANWB_A.A_TIME_DATE T INNER JOIN MAIS_ANWB_A.A_FACT_DAY F on F.date=T.date WHERE (' + @filter +')'
+        FROM A_TIME_DATE T INNER JOIN A_FACT_DAY F on F.date=T.date WHERE (' + @filter +')'
 
 		EXEC sp_executesql @sqlCommand, N'@date_source_min date OUTPUT', @date_source_min=@date_source_min OUTPUT
 
         SET @sqlCommand = 'select @date_source_max = isnull(max(F.date),''1900-12-31'') 
-        FROM MAIS_ANWB_A.A_TIME_DATE T INNER JOIN MAIS_ANWB_A.A_FACT_DAY F on F.date=T.date WHERE (' + @filter +')'
+        FROM A_TIME_DATE T INNER JOIN A_FACT_DAY F on F.date=T.date WHERE (' + @filter +')'
 
 		EXEC sp_executesql @sqlCommand, N'@date_source_max date OUTPUT', @date_source_max=@date_source_max OUTPUT
 				
@@ -131,16 +131,16 @@ and (activity_id=@activity_id or @activity_id=0)
                 EXEC( @sqlCommand)
                 SET @rows= @@ROWCOUNT
                
-                IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_A.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+                IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC [A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
                 SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
-                IF @commands like '%-LOG_DELETE%' EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
+                IF @commands like '%-LOG_ROWCOUNT%' EXEC [A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
+                IF @commands like '%-LOG_DELETE%' EXEC [A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
             END
  		END TRY
  		BEGIN CATCH  
-			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_A.[A_FN_SYS_ErrorJson]()) 
-            SET @output=@output+MAIS_ANWB_A.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  
+			SET @data=JSON_MODIFY( @data,'$.error',[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC [A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -157,7 +157,7 @@ and (activity_id=@activity_id or @activity_id=0)
             SELECT F.date, T.year_month_char, value1 
         , value1 / sum(value1) over (partition by T.year_month_char) day_weight
         , dense_rank() over (order by T.year_month_char ) as total_id
-        FROM MAIS_ANWB_A.A_TIME_DATE T INNER JOIN MAIS_ANWB_A.A_FACT_DAY F on F.date=T.date
+        FROM A_TIME_DATE T INNER JOIN A_FACT_DAY F on F.date=T.date
         WHERE ' + @filter + ') D inner join 
         (SELECT TRY_CONVERT(real,value) total
         ,ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS total_id
@@ -170,16 +170,16 @@ and (activity_id=@activity_id or @activity_id=0)
             BEGIN 
                 EXEC( @sqlCommand)
                 SET @rows= @@ROWCOUNT
-                IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
-                IF @commands like '%-LOG_INSERT%' EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
+                IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC [A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+                IF @commands like '%-LOG_ROWCOUNT%' EXEC [A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
+                IF @commands like '%-LOG_INSERT%' EXEC [A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
                 SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
             END
         END TRY
    		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_A.[A_FN_SYS_ErrorJson]()) 
-            SET @output=@output+MAIS_ANWB_A.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+   			SET @data=JSON_MODIFY( @data,'$.error',[A_FN_SYS_ErrorJson]()) 
+            SET @output=@output+[A_FN_SYS_ErrorJson]()+'<br><br>'
+			EXEC [A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
 	    END CATCH;   
 	  
 
@@ -208,7 +208,7 @@ and (activity_id=@activity_id or @activity_id=0)
 	DEALLOCATE TAB_CURSOR
 
 	SET @data=DATEDIFF(second,@start_time,getdate())
-	EXEC MAIS_ANWB_A.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
+	EXEC [A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
