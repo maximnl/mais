@@ -6,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE OR ALTER   PROCEDURE [A_SP_IMPORT]
+CREATE   PROCEDURE [A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -19,7 +19,7 @@ BEGIN
     SET NOCOUNT ON;
 	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]'
 	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]'
-        DECLARE @sqlCommand NVARCHAR(MAX) -- 
+    DECLARE @sqlCommand NVARCHAR(MAX) -- 
 	DECLARE @forecast_id int = 0
 	DECLARE @filter nvarchar(4000)='' --serrie='HACOBU' and LandGroepCode='BLG'
 	DECLARE @date_import_from date='1900-01-01' -- calculated by the import query using imports and procedures fields
@@ -42,7 +42,7 @@ BEGIN
 	DECLARE @date_source_max date='1900-01-01'
 	DECLARE @intraday_join varchar(2000)=''
 	DECLARE @intraday_duration varchar(5)=''
-        DECLARE @output nvarchar(max)='';
+    DECLARE @output nvarchar(max)='';
     
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
@@ -121,8 +121,11 @@ BEGIN
 				EXEC sp_executesql @sqlCommand, N'@date_source_max date OUTPUT', @date_source_max=@date_source_max OUTPUT
 
 
-				SET @date_import_from=@date_source_min
-				SET @date_import_until=@date_source_max
+				--SET @date_import_from=@date_source_min
+				--SET @date_import_until=@date_source_max
+                IF @date_import_from<@date_source_min BEGIN set @date_import_from=@date_source_min END
+                IF @date_import_until>@date_source_max BEGIN set @date_import_until=@date_source_max END
+				 
 			END
 
 			IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
