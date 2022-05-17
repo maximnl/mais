@@ -1,18 +1,25 @@
+USE [DM_ALC_DB]
+GO
+
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 17-5-2022 15:29:12 ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
 
 
 
 
-ALTER       VIEW [A_IMPORT_RUN] as 
+
+ALTER       VIEW [dbo].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
 		,P.[procedure_code] 
 	  	,P.app
         , P.[status]
+		, P.procedure_id
 	 	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
      	,I.[activity_id]
      	,I.[forecast_id]
@@ -23,9 +30,9 @@ SELECT  I.import_id
 		,case when isnull(I.[p5],'')>'' then I.[p5] else P.[p5] end as [p5]
      	,isnull(P.[sort_order],1) *1000+ isnull(I.[sort_order],0) sort_order
      	,'' as description
-     	,case when P.[days_back]+I.[days_back] >'' then dateadd(D,-1* case when isnull(I.[days_back],'')>'' then I.[days_back] else P.[days_back] end ,getdate()) else
+     	,case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
 			isnull(I.[date_import_from], '1900-01-01') end date_import_from
-     	,case when P.[days_forward]+I.[days_forward] >'' then dateadd(D, 1 * case when isnull(I.[days_forward],'')>'' then I.[days_forward] else P.[days_forward] end,getdate()) else 
+     	,case when isnull(P.[days_forward],0)+isnull(I.[days_forward],0) >0 then dateadd(D, 1 * case when isnull(I.[days_forward],0)>0 then I.[days_forward] else P.[days_forward] end,getdate()) else 
 			isnull(I.[date_import_until],'9999-01-01') end date_import_until
      	,case when isnull(I.[fields_source],'') >'' then I.[fields_source] else P.fields_source end fields_source
 	  	,case when isnull(I.[fields_target],'') >'' then I.[fields_target] else P.fields_target end fields_target
@@ -39,11 +46,14 @@ SELECT  I.import_id
  		,A.activity_name
 		,A.activity_set
         ,I.site_id
-  FROM [A_IMPORT] I
-	  inner join [A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
-	  inner join [A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
-	  inner join [A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
+  FROM dbo.[A_IMPORT] I
+	  inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
+	  inner join dbo.[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
+	  inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
 	  where I.active=1 and P.active=1 and A.active=1 and F.active=1
  
 
+
 GO
+
+
