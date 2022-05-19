@@ -1,3 +1,6 @@
+USE [DM_ALC_DB]
+GO
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 19-5-2022 12:28:04 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -9,7 +12,7 @@ GO
 ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
-,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
+,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID -NOINTRADAY
 ,@procedure_name nvarchar(200)='A_SP_IMPORT'
 ,@site_id int =0
 ,@import_id int =0
@@ -41,6 +44,7 @@ BEGIN
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
 	DECLARE @intraday_join varchar(2000)=''
+	DECLARE @intraday_interval_id varchar(200)='interval_id'
 	DECLARE @intraday_duration varchar(5)=''
     DECLARE @output nvarchar(max)='';
     
@@ -48,8 +52,8 @@ BEGIN
     SELECT import_id 
  	  ,[activity_id]
       ,[forecast_id]
-      ,[p1]
-      ,[p2]
+      ,isnull([p1],'')
+      ,isnull([p2],'')
       ,[p3]
       ,[p4]
       ,[p5]
@@ -63,8 +67,9 @@ BEGIN
       ,[group_by]
 	  ,concat(@commands,' ',commands)
 	  ,[procedure_name]
+	  ,site_id
     FROM   dbo.[A_IMPORT_RUN]
-    WHERE   (import_id=@import_id or @import_id=0) AND site_id=@site_id 
+    WHERE   (import_id=@import_id or @import_id=0) AND (site_id=@site_id or @site_id=0)  
     AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
@@ -97,32 +102,22 @@ BEGIN
      		,@source
      		,@group_by
 			,@commands
-			,@procedure_name 
+			,@procedure_name
+			,@site_id 
 
 	WHILE @@FETCH_STATUS = 0 
 
    		BEGIN 
-			
-			-- if import has intraday data update, we use p1 and p2 standard for some intraday parameters
-			IF @commands  like '%-INTRADAY%' BEGIN  
 
-				SET @intraday_join= case when @p1>'' then @p1 else 'inner join a_time_interval I on interval_id=I.interval_id' end
-				SET @intraday_duration = case when @p2>'' then @p2 else '30' end  -- standard duration of the interval is 30 min
+			IF @commands NOT like '%-NODELTA%' BEGIN 
 
-			END
+				declare @dates varchar(30)
+				SET @sqlCommand = 'select @dates = convert(varchar(10),isnull(min(' + @group_by + '),''9999-12-31'')) + convert(varchar(10),isnull(max(' + @group_by + '),''1900-12-31''))
+				 FROM ' + @source +' WHERE ' + @filter
+				EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
+				set @date_source_min=left(@dates,10)
+				set @date_source_max=right(@dates,10)
 
-			IF @commands  like '%-DELTA%' BEGIN 
-
-				
-				SET @sqlCommand = 'select @date_source_min = isnull(min(' + @group_by + '),''9999-12-31'') FROM ' + @source +' WHERE ' + @filter
-				EXEC sp_executesql @sqlCommand, N'@date_source_min date OUTPUT', @date_source_min=@date_source_min OUTPUT
-
-				SET @sqlCommand = 'select @date_source_max = isnull(max(' + @group_by + '),''1900-12-31'') FROM ' + @source +' WHERE ' + @filter
-				EXEC sp_executesql @sqlCommand, N'@date_source_max date OUTPUT', @date_source_max=@date_source_max OUTPUT
-
-
-				--SET @date_import_from=@date_source_min
-				--SET @date_import_until=@date_source_max
                 IF @date_import_from<@date_source_min BEGIN set @date_import_from=@date_source_min END
                 IF @date_import_until>@date_source_max BEGIN set @date_import_until=@date_source_max END
 				 
@@ -149,9 +144,9 @@ BEGIN
  		
 		SET @sqlCommand = 
  		'DELETE FROM '+ @fact_day +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + ''' AND activity_id =' +  convert(nvarchar(max),@activity_id) 
-+ '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id)
-+ '	AND site_id = ' +  convert(nvarchar(max),@site_id)  ;
++ '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id);
   
+		
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
             SET @output=@output+'-- DELETING DAY DATA <br>'+@sqlCommand+'<br><br>';
@@ -203,7 +198,11 @@ END TRY
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
 	END CATCH;   
 
-	IF @commands  like '%-INTRADAY%' BEGIN  
+	IF @commands  like '%-INTRADAY%' AND @commands not like '%-NOINTRADAY%' BEGIN  
+
+		SET @intraday_join= case when @p1>'' then @p1 else @intraday_join end
+		SET @intraday_interval_id = case when @p1>'' then 'I.interval_id' else @intraday_interval_id end -- p1 has a join with interval table with alias I , we need override default
+		SET @intraday_duration = case when @p2>'' then @p2 else '30' end  -- standard duration of the interval is 30 min
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN INTRADAY
 	--------------------------------------------------------------------------------	
@@ -212,7 +211,7 @@ END TRY
         +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' 
         + convert(char(10),@date_import_until,126) +'''	AND activity_id =' +  convert(nvarchar(max),@activity_id) 
         + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) 
-        + '	AND site_id = ' +  convert(nvarchar(max),@site_id) ;
+        ;
   
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand;
@@ -236,13 +235,13 @@ END TRY
 	--------------------------------------------------------------------------------------------------------------------------
 	--  INSERT TO INTRADAY
 	-------------------------------------------------------------------------------------
- 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ', I.interval_id') END ELSE SET @groupby=''
+ 		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ',',@intraday_interval_id) END ELSE SET @groupby=''
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday 
         +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id)'
         +' SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ',' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
-   		+ ',I.interval_id, '+ convert(varchar(5),@intraday_duration) + ',' + @fields_source 
+   		+ ',' + @intraday_interval_id+ ', '+ convert(varchar(5),@intraday_duration) + ',' + @fields_source 
         + ',' + convert(nvarchar(max),@site_id) 
  		+ ' FROM '+ @source + ' ' + @intraday_join + ' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
@@ -291,6 +290,7 @@ END TRY
      		,@group_by
 			,@commands 
 			,@procedure_name 
+			,@site_id
 
    		END -- END OF FETCHING IMPORTS
 
@@ -305,4 +305,3 @@ END TRY
 END
 
 
-GO
