@@ -1,5 +1,4 @@
-USE [DM_ALC_DB]
-GO
+ 
 /****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 19-5-2022 12:28:04 ******/
 SET ANSI_NULLS OFF
 GO
