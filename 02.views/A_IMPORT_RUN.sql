@@ -1,12 +1,11 @@
-USE [DM_ALC_DB]
-GO
-
-/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 17-5-2022 15:29:12 ******/
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 30-5-2022 16:34:35 ******/
 SET ANSI_NULLS ON
 GO
 
 SET QUOTED_IDENTIFIER ON
 GO
+
+
 
 
 
@@ -23,11 +22,11 @@ SELECT  I.import_id
 	 	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
      	,I.[activity_id]
      	,I.[forecast_id]
-     	,case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end as [p1]
-     	,case when isnull(I.[p2],'')>'' then I.[p2] else P.[p2] end as [p2]
-		,case when isnull(I.[p3],'')>'' then I.[p3] else P.[p3] end as [p3]
-		,case when isnull(I.[p4],'')>'' then I.[p4] else P.[p4] end as [p4]
-		,case when isnull(I.[p5],'')>'' then I.[p5] else P.[p5] end as [p5]
+     	,isnull(case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end,'') as [p1]
+     	,isnull(case when isnull(I.[p2],'')>'' then I.[p2] else P.[p2] end,'') as [p2]
+		,isnull(case when isnull(I.[p3],'')>'' then I.[p3] else P.[p3] end,'') as [p3]
+		,isnull(case when isnull(I.[p4],'')>'' then I.[p4] else P.[p4] end,'') as [p4]
+		,isnull(case when isnull(I.[p5],'')>'' then I.[p5] else P.[p5] end,'') as [p5]
      	,isnull(P.[sort_order],1) *1000+ isnull(I.[sort_order],0) sort_order
      	,'' as description
      	,case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
@@ -52,6 +51,8 @@ SELECT  I.import_id
 	  inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
 	  where I.active=1 and P.active=1 and A.active=1 and F.active=1
  
+
+
 
 
 GO
