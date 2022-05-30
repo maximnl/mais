@@ -1,17 +1,17 @@
- 
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 19-5-2022 12:28:04 ******/
+
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 30-5-2022 16:35:42 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-
+-- generic import of transactional data into time series/ MAIS data format
+-- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
 -- template stored procedure for loading data from source tables
-ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE OR ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
-,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID -NOINTRADAY
+,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY
 ,@procedure_name nvarchar(200)='A_SP_IMPORT'
 ,@site_id int =0
 ,@import_id int =0
@@ -19,11 +19,15 @@ AS
 BEGIN
 
     SET NOCOUNT ON;
-	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]'
-	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]'
+
+--  configuration
+	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]' -- data per day stored here
+	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]' -- data per day/interval_id is stored here. conform a_time_interval dimension
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
+
+--  source data parameters
 	DECLARE @forecast_id int = 0
-	DECLARE @filter nvarchar(4000)='' --serrie='HACOBU' and LandGroepCode='BLG'
+	DECLARE @filter nvarchar(4000)='' -- where filter for filtering source data
 	DECLARE @date_import_from date='1900-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_import_until date='9999-01-01'
 	DECLARE @fields_source varchar(2000)='' -- source fields
@@ -36,16 +40,23 @@ BEGIN
 	DECLARE @p3 varchar(2000)=''
 	DECLARE @p4 varchar(2000)=''
 	DECLARE @p5 varchar(2000)=''
+	DECLARE @groupby varchar(2000)=''
+
+	-- login parameters
 	DECLARE @data  varchar(4000)=''  -- log data
 	DECLARE @rows INT   -- keep affected rows
 	DECLARE @start_time datetime=null
-	DECLARE @groupby varchar(2000)=''
+    DECLARE @output nvarchar(max)='';
+
+	-- source data analysis
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
+
+	-- intraday parameters
 	DECLARE @intraday_join varchar(2000)=''
 	DECLARE @intraday_interval_id varchar(200)='interval_id'
-	DECLARE @intraday_duration varchar(5)=''
-    DECLARE @output nvarchar(max)='';
+	DECLARE @intraday_duration varchar(5)='15' -- default intraday interval duration in min
+
     
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
@@ -53,9 +64,9 @@ BEGIN
       ,[forecast_id]
       ,isnull([p1],'')
       ,isnull([p2],'')
-      ,[p3]
-      ,[p4]
-      ,[p5]
+      ,isnull([p3],'')
+      ,isnull([p4],'')
+      ,isnull([p5],'')
       ,[date_import_from]
       ,[date_import_until]
       ,[fields_source]
@@ -111,7 +122,7 @@ BEGIN
 			IF @commands NOT like '%-NODELTA%' BEGIN 
 
 				declare @dates varchar(30)
-				SET @sqlCommand = 'select @dates = convert(varchar(10),isnull(min(' + @group_by + '),''9999-12-31'')) + convert(varchar(10),isnull(max(' + @group_by + '),''1900-12-31''))
+				SET @sqlCommand = 'select @dates = convert(char(10),convert(date,isnull(min(' + @group_by + '),''9999-12-31'')),126) + convert(char(10),convert(date,isnull(max(' + @group_by + '),''1900-12-31'')),126)
 				 FROM ' + @source +' WHERE ' + @filter
 				EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
 				set @date_source_min=left(@dates,10)
@@ -171,8 +182,8 @@ BEGIN
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby=concat(' GROUP BY ',@group_by) END ELSE SET @groupby=''
 
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day 
-        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) 
-        SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
+        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id)' + 
+        'SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ', ' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
    		+ ',' + @fields_source +','+ convert(nvarchar(max),@site_id) +
  		' FROM '+ @source +' WHERE ' + @filter  
@@ -201,7 +212,7 @@ END TRY
 
 		SET @intraday_join= case when @p1>'' then @p1 else @intraday_join end
 		SET @intraday_interval_id = case when @p1>'' then 'I.interval_id' else @intraday_interval_id end -- p1 has a join with interval table with alias I , we need override default
-		SET @intraday_duration = case when @p2>'' then @p2 else '30' end  -- standard duration of the interval is 30 min
+		SET @intraday_duration = case when @p2>'' then @p2 else @intraday_duration end  -- standard duration of the interval is 15 min
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN INTRADAY
 	--------------------------------------------------------------------------------	
