@@ -1,5 +1,3 @@
-
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT_PARALLELPERIOD]    Script Date: 30-5-2022 16:35:50 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -8,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
+ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -19,7 +17,6 @@ AS
 BEGIN
 
     SET NOCOUNT ON;
-
 	
 --  configuration
 	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]' -- data per day stored here
@@ -29,8 +26,8 @@ BEGIN
 --  source data parameters
 	DECLARE @forecast_id int = 0
 	DECLARE @filter nvarchar(4000)='' -- where filter for filtering source data
-	DECLARE @date_import_from date='1900-01-01' -- calculated by the import query using imports and procedures fields
-	DECLARE @date_import_until date='9999-01-01'
+	DECLARE @date_import_from date='9999-01-01' -- calculated by the import query using imports and procedures fields
+	DECLARE @date_import_until date='1900-01-01'
 	DECLARE @fields_source varchar(2000)='' -- source fields
 	DECLARE @fields_target varchar(2000)=''  -- target fields value1
 	DECLARE @schedule varchar(2000)=''
@@ -73,7 +70,7 @@ BEGIN
       ,[fields_source]
       ,[fields_target]
       ,[schedule]
-      ,[filter]
+      ,isnull([filter],'1=1') filter
       ,[source]
       ,[group_by]
 	  ,concat(@commands,' ',commands)
@@ -148,10 +145,10 @@ BEGIN
  	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
 	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
-		SET @sqlCommand ='DELETE
-		  from [dbo].[A_FACT_DAY] 
-		  where forecast_id=' + convert(varchar(10),@forecast_id) + ' and ' + @filter + ' and date between ''' 
-		 + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126) + '''' + '	AND site_id = ' +  convert(nvarchar(max),@site_id)  ;
+		SET @sqlCommand ='DELETE S FROM [A_FACT_DAY] S'+ 
+		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
+        ' WHERE forecast_id=' + convert(varchar(10),@forecast_id) + ' AND ' + @filter + ' and date between ''' 
+		 + convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + '''' + '	AND S.site_id = ' +  convert(nvarchar(max),@site_id)  ;
 		  
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
@@ -177,20 +174,18 @@ BEGIN
 	--  INSERT TO DAY
 	-------------------------------------------------------------------------------------
  		 
-		SET @sqlCommand = 'INSERT INTO '+ @fact_day 
-        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) 
-       SELECT D.date, activity_id, ' + convert(varchar(10),@forecast_id) 
-	+ ' as forecast_id, '+ @fields_source +',site_id 
-	from ( select S.*, d.' + @p2+', d.'+@p3+', d.'+@p4+',A.activity_set,A.domain,A.category
-   		from [a_fact_day] S
-		INNER JOIN [a_dim_activity] A on S.activity_id=A.activity_id
-   		INNER JOIN [a_time_date] d on S.[date]=d.[date]
-   		and forecast_id=' + convert(varchar(10),@p1) + ' and ' + @filter +') as SD
-     	 INNER JOIN [a_time_date] D on D.date between ''' 
+		SET @sqlCommand = ' INSERT INTO '+ @fact_day 
+        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) '+
+       ' SELECT D.date, activity_id, ' + convert(varchar(10),@forecast_id) 
+	+ ' as forecast_id, ' + convert(varchar(10),@import_id) + ','+
+	+ @fields_source +',site_id FROM ( select S.*, d.' + @p2+', d.'+@p3+', d.'+@p4+',A.activity_set,A.domain,A.category'+
+   		' FROM [A_FACT_DAY] S'+
+		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
+   		' INNER JOIN [A_TIME_DATE] d on S.[date]=d.[date]' +
+   		' AND forecast_id=' + convert(varchar(10),@p1) + ' AND A.active=1 AND ' + @filter +') as SD'+
+     	 ' INNER JOIN [A_TIME_DATE] D on D.date between ''' 
 		 + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126) 
-		 + ''' and  SD.' + @p2+'=D.' + @p2+' and ((SD.'+@p3+'=D.'+@p3+' and SD.'+@p4+'=(D.'+@p4+'-' + convert(varchar(10),@p5)+ '))  
-	 )'
-
+		 + ''' AND SD.' + @p2+'=D.' + @p2+' AND ((SD.'+@p3+'=D.'+@p3+' and SD.'+@p4+'=(D.'+@p4+'-' + convert(varchar(10),@p5)+ ')))'
 
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
@@ -209,8 +204,7 @@ BEGIN
    			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
             SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
-	    END CATCH;   
-	  
+	    END CATCH;   	  
 
  		FETCH NEXT FROM TAB_CURSOR 
  		INTO @import_id 
@@ -242,4 +236,4 @@ BEGIN
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
-
+GO
