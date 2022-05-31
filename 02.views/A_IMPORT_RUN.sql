@@ -1,25 +1,17 @@
-/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 30-5-2022 16:34:35 ******/
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-
-
-
-
-
-ALTER       VIEW [dbo].[A_IMPORT_RUN] as 
+CREATE OR ALTER VIEW [dbo].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
-		,P.[procedure_code] 
-	  	,P.app
-        , P.[status]
-		, P.procedure_id
-	 	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
+	,P.[procedure_code] 
+	,P.app
+        ,P.[status]
+	,P.procedure_id
+	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
      	,I.[activity_id]
      	,I.[forecast_id]
      	,isnull(case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end,'') as [p1]
@@ -30,11 +22,11 @@ SELECT  I.import_id
      	,isnull(P.[sort_order],1) *1000+ isnull(I.[sort_order],0) sort_order
      	,'' as description
      	,case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
-			isnull(I.[date_import_from], '1900-01-01') end date_import_from
+			isnull(I.[date_import_from], isnull(P.date_import_from, '1900-01-01')) end date_import_from
      	,case when isnull(P.[days_forward],0)+isnull(I.[days_forward],0) >0 then dateadd(D, 1 * case when isnull(I.[days_forward],0)>0 then I.[days_forward] else P.[days_forward] end,getdate()) else 
-			isnull(I.[date_import_until],'9999-01-01') end date_import_until
-     	,case when isnull(I.[fields_source],'') >'' then I.[fields_source] else P.fields_source end fields_source
-	  	,case when isnull(I.[fields_target],'') >'' then I.[fields_target] else P.fields_target end fields_target
+			isnull(I.[date_import_until],isnull(P.date_import_until, '9999-01-01')) end date_import_until
+     	,case when isnull(I.[fields_source],'') >'' then I.[fields_source] else isnull(P.fields_source,'value1') end fields_source
+	  	,case when isnull(I.[fields_target],'') >'' then I.[fields_target] else isnull(P.fields_target,isnull(P.fields_source,'value1')) end fields_target
 	  	,case when isnull(I.[schedule],'')>'' then I.[schedule] else P.[schedule] end as [schedule]
 	  	,case when isnull(P.[filter],'')>'' or isnull(I.[filter],'')>'' then concat(P.[filter]
 			,case when isnull(P.[filter],'')>'' and isnull(I.[filter],'')>'' then ' AND ' 
@@ -51,10 +43,4 @@ SELECT  I.import_id
 	  inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
 	  where I.active=1 and P.active=1 and A.active=1 and F.active=1
  
-
-
-
-
 GO
-
-
