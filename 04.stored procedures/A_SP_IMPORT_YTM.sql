@@ -6,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE OR ALTER  PROCEDURE [dbo].[A_SP_IMPORT_YTM]
+ALTER  PROCEDURE [dbo].[A_SP_IMPORT_YTM]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -70,7 +70,7 @@ BEGIN
       ,[fields_source]
       ,[fields_target]
       ,[schedule]
-      ,isnull([filter],'1=1') filter
+      ,[filter]
       ,[source]
       ,[group_by]
 	  ,concat(@commands,' ',commands)
@@ -183,7 +183,7 @@ SET @sqlCommand = ' INSERT INTO '+ @fact_day
 ',sum(value9) over (partition by activity_id, [year] order by [date] rows unbounded preceding) value9'+
 ',sum(value10) over (partition by activity_id, [year] order by [date] rows unbounded preceding) value10'+
 ',site_id 
-FROM (SELECT activity_id,D.[year_month_char],D.[year] , max(d.date) as [date] 
+FROM (SELECT S.activity_id,D.'+@p2+',D.'+@p3+' as year , max(d.date) as [date] 
 ,sum(Value1) value1 
 ,sum(Value2) value2 
 ,sum(Value3) value3 
@@ -195,10 +195,11 @@ FROM (SELECT activity_id,D.[year_month_char],D.[year] , max(d.date) as [date]
 ,sum(Value9) value9
 ,sum(Value10) value10
 , ' +  convert(nvarchar(max),@site_id) + ' as site_id'+
-' FROM [A_FACT_DAY] A INNER JOIN [A_TIME_DATE] D on A.Date=D.Date '+
-'WHERE forecast_id=' + convert(varchar(10),@p1) 
-+ ' and A.date between '''+ convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)
-+ ''' group by activity_id, D.[year_month_char],D.[year]
+' FROM [A_FACT_DAY] S INNER JOIN [A_TIME_DATE] D on S.Date=D.Date '+
+' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
+' WHERE forecast_id=' + convert(varchar(10),@p1) + ' AND ' + @filter +
++ ' AND S.date between '''+ convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)
++ ''' GROUP BY S.activity_id, D.'+@p2+',D.'+@p3+'
 ) AS T'
 
 		 
