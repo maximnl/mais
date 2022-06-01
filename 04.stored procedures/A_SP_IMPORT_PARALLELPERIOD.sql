@@ -3,10 +3,8 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-
-
 -- template stored procedure for loading data from source tables
-ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
+CREATE OR ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -120,6 +118,7 @@ BEGIN
 		 
  		IF TRY_CONVERT(INT,@p1)=0 SET @p1 = 1  -- forecast from id 
  		IF TRY_CONVERT(INT,@p5)=0 SET @p5 = 1  -- LAG YEARS
+        IF LEN(@filter)<4 SET @filter='S.activity_id='+convert(varchar(10),@activity_id)
 		
 		 IF @p2 like '%m%' BEGIN
 			-- procedure is per maand
