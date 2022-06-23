@@ -3,8 +3,10 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
+
+
 -- template stored procedure for loading data from source tables
-CREATE OR ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
+CREATE  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -144,7 +146,7 @@ BEGIN
  	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
 	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
-		SET @sqlCommand ='DELETE S FROM [A_FACT_DAY] S'+ 
+		SET @sqlCommand ='DELETE S FROM ' + @fact_day + ' S'+ 
 		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
         ' WHERE forecast_id=' + convert(varchar(10),@forecast_id) + ' AND ' + @filter + ' and date between ''' 
 		 + convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + '''' + '	AND S.site_id = ' +  convert(nvarchar(max),@site_id)  ;
@@ -178,7 +180,7 @@ BEGIN
        ' SELECT D.date, activity_id, ' + convert(varchar(10),@forecast_id) 
 	+ ' as forecast_id, ' + convert(varchar(10),@import_id) + ','+
 	+ @fields_source +',site_id FROM ( select S.*, d.' + @p2+', d.'+@p3+', d.'+@p4+',A.activity_set,A.domain,A.category'+
-   		' FROM [A_FACT_DAY] S'+
+   		' FROM ' + @fact_day +'  S'+
 		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
    		' INNER JOIN [A_TIME_DATE] d on S.[date]=d.[date]' +
    		' AND forecast_id=' + convert(varchar(10),@p1) + ' AND A.active=1 AND ' + @filter +') as SD'+
