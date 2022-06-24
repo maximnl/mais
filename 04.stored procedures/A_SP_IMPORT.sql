@@ -113,37 +113,38 @@ BEGIN
 			,@site_id 
 	WHILE @@FETCH_STATUS = 0 
    	BEGIN 
-			IF @commands NOT like '%-NODELTA%' BEGIN
-				declare @dates varchar(30)
-				SET @sqlCommand = 'select @dates = convert(char(10),convert(date,isnull(min(' + @group_by + '),''9999-12-31'')),126) + convert(char(10),convert(date,isnull(max(' + @group_by + '),''1900-12-31'')),126)
-				 FROM ' + @source +' WHERE ' + @filter
-				EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
-				SET @date_source_min=left(@dates,10)
-				SET @date_source_max=right(@dates,10)
+        SET @day_source= case when @source>'' then @source else @fact_day end
+        IF @commands NOT like '%-NODELTA%' BEGIN
+            declare @dates varchar(30)
+            SET @sqlCommand = 'select @dates = convert(char(10),convert(date,isnull(min(' + @group_by + '),''9999-12-31'')),126) + convert(char(10),convert(date,isnull(max(' + @group_by + '),''1900-12-31'')),126)
+                FROM ' + @day_source +' WHERE ' + @filter
+            EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
+            SET @date_source_min=left(@dates,10)
+            SET @date_source_max=right(@dates,10)
 
-                IF @date_import_from<@date_source_min BEGIN SET @date_import_from=@date_source_min END
-                IF @date_import_until>@date_source_max BEGIN SET @date_import_until=@date_source_max END				 
-			END
+            IF @date_import_from<@date_source_min BEGIN SET @date_import_from=@date_source_min END
+            IF @date_import_until>@date_source_max BEGIN SET @date_import_until=@date_source_max END				 
+        END
 
-			IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
+        IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
 
-			set @data = left((concat(concat('{"p1":"',@p1,'",'),
-			concat('"p2":"',@p2,'",'),
-			concat('"p3":"',@p3,'",'),
-			concat('"p4":"',@p4,'",'),
-			concat('"p5":"',@p5,'"}')) 
-			),4000)
-			set @data=JSON_MODIFY( @data,'$.filter',@filter)
-			set @data=JSON_MODIFY( @data,'$.group_by',@group_by)
-			set @data=JSON_MODIFY( @data,'$.fields_source',@fields_source)
-			set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target)
+        set @data = left((concat(concat('{"p1":"',@p1,'",'),
+        concat('"p2":"',@p2,'",'),
+        concat('"p3":"',@p3,'",'),
+        concat('"p4":"',@p4,'",'),
+        concat('"p5":"',@p5,'"}')) 
+        ),4000)
+        set @data=JSON_MODIFY( @data,'$.filter',@filter)
+        set @data=JSON_MODIFY( @data,'$.group_by',@group_by)
+        set @data=JSON_MODIFY( @data,'$.fields_source',@fields_source)
+        set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target)
 
 		--@category --@session_id --@object_id --@step_id -- data
 		EXEC dbo.[A_SP_SYS_LOG] 'IMPORT RUN' ,@session_id  ,@import_id  , @procedure_name ,@data  
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN DAY
 	--------------------------------------------------------------------------------
- 		SET @day_source= case when @source>'' then @source else @fact_day end
+ 		
 		SET @sqlCommand = 
  		'DELETE FROM '+ @fact_day +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + ''' AND activity_id =' +  convert(nvarchar(max),@activity_id) 
 + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id);
