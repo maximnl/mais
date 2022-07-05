@@ -6,13 +6,13 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE  PROCEDURE [dbo].[A_SP_FC_CORELATION]
+ALTER  PROCEDURE [dbo].[A_SP_FC_CORELATION]
  @activity_id int = 0 
 ,@session_id uniqueidentifier   = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
 ,@procedure_name nvarchar(200)='A_SP_FC_CORELATION'
-,@site_id int =1
-,@import_id int =0
+,@site_id int = 0
+,@import_id int = 0
 AS
 BEGIN
 
@@ -38,6 +38,7 @@ BEGIN
 	DECLARE @p4 varchar(2000)=''
 	DECLARE @p5 varchar(2000)=''
 	DECLARE @groupby varchar(2000)=''
+    DECLARE @parent varchar(200)=''
 
 	-- login parameters
 	DECLARE @data  varchar(4000)=''  -- log data
@@ -70,6 +71,7 @@ BEGIN
 	  ,concat(@commands,' ',commands)
 	  ,[procedure_name]
 	  ,site_id
+      ,parent
     FROM   dbo.[A_IMPORT_RUN]
     WHERE   (import_id=@import_id or @import_id=0) 
 		AND (site_id=@site_id or site_id is null or @site_id=0)
@@ -106,13 +108,23 @@ BEGIN
 			,@commands
 			,@procedure_name 
 			,@site_id
+            ,@parent
 
 	WHILE @@FETCH_STATUS = 0 
 
    	BEGIN 
 		 
- 		IF TRY_CONVERT(INT,@p1)=0 SET @p1 = 1  -- forecast from id 
- 		IF TRY_CONVERT(INT,@p5)=0 SET @p5 = 1  -- LAG YEARS
+        DECLARE @activity_corelated_id INT=try_convert(int,@p1)  
+        DECLARE @forecast_corelated_id INT=try_convert(int,@p2) 
+        DECLARE @forecast_source_id INT=try_convert(int,@p3)	
+        DECLARE @lag INT=try_convert(int,@p4)  
+        DECLARE @errors int = 0 
+
+        IF @activity_corelated_id= 0 BEGIN
+            SET @activity_corelated_id=try_convert(int,@parent)
+        END
+
+        IF @activity_corelated_id=0 OR @forecast_corelated_id=0 OR @forecast_source_id=0 SET @errors=@errors+1  
 		 
 		SET @date_import_from=isnull(@date_import_from,[dbo].[A_FN_TI_FirstDayCurrentYear](NULL));
  		SET @date_import_until=isnull(@date_import_until,[dbo].[A_FN_TI_LastDayCurrentYear](NULL));
@@ -133,14 +145,16 @@ BEGIN
 		  
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-            SET @output=@output+'-- DELETING DAY DATA <br>'+@sqlCommand+'<br><br>';
+            SET @output=@output+'-- DELETE DAY DATA QUERY <br>'+@sqlCommand+'<br><br>';
 			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
             BEGIN
-                EXEC( @sqlCommand)
-                SET @rows= @@ROWCOUNT
-               
+                IF @errors=0 BEGIN EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
+                    SET @output=@output+'-- DELETE QUERY EXECUTED <br>';
+                    SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
+                END
+                ELSE SET @output=@output+'-- QUERIES WILL NOT BE EXECUTED DUE TO ERRORS. Please check the parameters.<br>'       
                 IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
-                SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
+                
                 IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
                 IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
             END
@@ -154,15 +168,6 @@ BEGIN
 	--------------------------------------------------------------------------------------------------------------------------
 	--  INSERT TO DAY
 	-------------------------------------------------------------------------------------
-
-DECLARE @activity_corelated_id INT=@p1 --664 -- cases coma DLD  664--937 -- cases trin coma DLD 371  --tel 
-DECLARE @forecast_corelated_id INT=@p2 --1 
-DECLARE @forecast_source_id INT=@p3--3	
-
-DECLARE @lag INT=@p4 -- 1 --
-
---DECLARE @activity_id INT =801 -- zusterclubs DLD    1456 -- TRIN coma DLD  588 -- cases ww  ww --  -- 
-
 SET @sqlCommand = '
 /* aggregate correlation data for the activity to be forecasted */
 ;with ACT as (
@@ -268,15 +273,16 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
         
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-            SET @output=@output+ '-- INSERTING DAY DATA <br>'+ @sqlCommand + '<br><br>';
+            SET @output=@output+ '-- INSERT DAY DATA QUERY <br>'+ @sqlCommand + '<br><br>';
 			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
             BEGIN 
-                EXEC( @sqlCommand)
-                SET @rows= @@ROWCOUNT
+                IF @errors=0 BEGIN EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
+                    SET @output=@output+'-- INSERT QUERY EXECUTED <br>';
+                    SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>';  
+                END              
                 IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
                 IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
                 IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
-                SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
             END
         END TRY
    		BEGIN CATCH  
@@ -305,14 +311,27 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
 			,@commands 
 			,@procedure_name 
 			,@site_id
+            ,@parent
    		END -- END OF FETCHING IMPORTS
 
 	CLOSE TAB_CURSOR 
 	DEALLOCATE TAB_CURSOR
-
-	SET @data=DATEDIFF(second,@start_time,getdate())
+    SET @output=@output + '<br><br>This import procedure calculates a forecast from a forecast source for a corelated activity 
+    based on the historical ratios defined by the corelated activity and corelated forecast (actuals). 
+    <br>Procedure parameters: 
+    <br>p1  - activity_corelated_id = '+ convert(varchar(max),@activity_corelated_id)+';
+    <br>p2 - forecast_corelated_id = '+ convert(varchar(max),@forecast_corelated_id)+';
+    <br>p3 - forecast_source_id = '+ convert(varchar(max),@forecast_source_id)+';
+    <br>p4 - lag - '+ convert(varchar(max),@lag)+';
+    <br>p1 will be replaced by activity parent ='+ convert(varchar(max),@parent)+' if p1 is left empty.';
+ 
+	SET @data=format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3')
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data
+
+    SET @output=@output + '<br> It took ' + @data + ' sec.'
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
+-- VERSION 20220705 
+-- Parent activity id is added to complement p1
 GO
