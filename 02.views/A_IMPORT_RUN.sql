@@ -2,16 +2,16 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-
-CREATE OR ALTER VIEW [dbo].[A_IMPORT_RUN] as 
+-- VIEW for running IMPORTs stored procedures
+ALTER       VIEW [dbo].[A_IMPORT_RUN] as 
 SELECT  I.import_id
      	,case when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
      	,P.[procedure_name]
-	,P.[procedure_code] 
-	,P.app
-        ,P.[status]
-	,P.procedure_id
-	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
+		,P.[procedure_code] 
+	  	,P.app
+        , P.[status]
+		, P.procedure_id
+	 	,rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands     
      	,I.[activity_id]
      	,I.[forecast_id]
      	,isnull(case when isnull(I.[p1],'')>'' then I.[p1] else P.[p1] end,'') as [p1]
@@ -36,6 +36,7 @@ SELECT  I.import_id
 	  	,case when isnull(I.[group_by],'')>'' then I.[group_by] else P.[group_by] end group_by
  		,A.activity_name
 		,A.activity_set
+        ,A.parent
         ,I.site_id
   FROM dbo.[A_IMPORT] I
 	  inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
@@ -43,4 +44,9 @@ SELECT  I.import_id
 	  inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
 	  where I.active=1 and P.active=1 and A.active=1 and F.active=1
  
+-- VERSION 20220705 
+-- Parent field from activity added for corelation forecasts
+
+
+
 GO
