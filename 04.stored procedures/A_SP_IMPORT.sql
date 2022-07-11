@@ -2,6 +2,10 @@ SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+
+-- version 20220711
+-- scheduling parameter added
+
 -- version 20220622
 -- default day and intraday tables are used if the source parameter left empty.
 
@@ -11,7 +15,7 @@ GO
 -- template stored procedure for loading data from source tables
 ALTER     PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
-,@session_id uniqueidentifier   = null
+,@session_id nvarchar(50)  = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY
 ,@procedure_name nvarchar(200)='A_SP_IMPORT'
 ,@site_id int =0
@@ -84,7 +88,7 @@ BEGIN
     AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
-	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands
+	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands, @site_id
 	SET @start_time     = GETDATE()
 
 ----------------------------------------------
@@ -112,19 +116,37 @@ BEGIN
 			,@procedure_name
 			,@site_id 
 	WHILE @@FETCH_STATUS = 0 
-   	BEGIN 
+   	BEGIN
+
+        DECLARE @errors int = 0 
+        DECLARE @on_schedule bit=1
+        IF RTRIM(@schedule)>'' BEGIN
+            SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' +@schedule + ' THEN 1 ELSE 0 END'
+            EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
+        END 
         SET @day_source= case when @source>'' then @source else @fact_day end
         IF @commands NOT like '%-NODELTA%' BEGIN
             declare @dates varchar(30)
             SET @sqlCommand = 'select @dates = convert(char(10),convert(date,isnull(min(' + @group_by + '),''9999-12-31'')),126) + convert(char(10),convert(date,isnull(max(' + @group_by + '),''1900-12-31'')),126)
                 FROM ' + @day_source +' WHERE ' + @filter
-            EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
-            SET @date_source_min=left(@dates,10)
-            SET @date_source_max=right(@dates,10)
+            BEGIN TRY
+                EXEC sp_executesql @sqlCommand, N'@dates varchar(30) OUTPUT', @dates=@dates OUTPUT
+                SET @date_source_min=left(@dates,10)
+                SET @date_source_max=right(@dates,10)
+            END TRY
+     		BEGIN CATCH  
+                SET @data=dbo.[A_FN_SYS_ErrorJson]()
+                SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
+                EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@output  , @site_id
+     		END CATCH;   
 
             IF @date_import_from<@date_source_min BEGIN SET @date_import_from=@date_source_min END
             IF @date_import_until>@date_source_max BEGIN SET @date_import_until=@date_source_max END				 
         END
+
+        SET @output=@output+'-- DETECTED SOURCE DATES RANGE '+@dates+'<br>';
+        SET @output=@output+'-- '+@sqlCommand+'<br>'; 
+
 
         IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
 
@@ -140,7 +162,17 @@ BEGIN
         set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target)
 
 		--@category --@session_id --@object_id --@step_id -- data
-		EXEC dbo.[A_SP_SYS_LOG] 'IMPORT RUN' ,@session_id  ,@import_id  , @procedure_name ,@data  
+		EXEC dbo.[A_SP_SYS_LOG] 'IMPORT RUN' ,@session_id  ,@import_id  , @procedure_name ,@data  , @site_id
+
+        -- test parameters before running all
+        IF @activity_id=0 OR @forecast_id=0 SET @errors=@errors+1 
+        IF @date_import_until<@date_import_from  BEGIN 
+            SET @errors=@errors+1 
+            SET @output=@output+'-- <b>ERROR: Source dates cannot be found. Queries will not be executed due to errors. 
+            Please check if source exists and/or the dates parameters.</b><br>'   
+            EXEC dbo.[A_SP_SYS_LOG]  'IMPORT ERROR' ,@session_id ,@import_id , NULL, @sqlCommand , @site_id   
+        END
+
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN DAY
 	--------------------------------------------------------------------------------
@@ -148,26 +180,27 @@ BEGIN
 		SET @sqlCommand = 
  		'DELETE FROM '+ @fact_day +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + ''' AND activity_id =' +  convert(nvarchar(max),@activity_id) 
 + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id);
-  
-		
- 		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+        IF @commands like '%-PRINT%' PRINT @sqlCommand
+ 		BEGIN TRY		 
             SET @output=@output+'-- DELETING DAY DATA <br>'+@sqlCommand+'<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+			IF @commands not like '%-PRINT%'
             BEGIN
-                EXEC( @sqlCommand)
-                SET @rows= @@ROWCOUNT          
-                IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' 
-                    EXEC dbo.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
-                SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  
-                IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  
+                IF @errors=0 BEGIN 
+                    IF (@on_schedule=1) BEGIN
+                        EXEC( @sqlCommand);SET @rows= @@ROWCOUNT          
+                        SET @output=@output+'-- Number of day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
+                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  , @site_id
+                        IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand , @site_id 
+                    END
+                    ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>'
+                END
+                ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>'       
             END
  		END TRY
  		BEGIN CATCH  
 			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
             SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  
+			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  , @site_id
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -184,24 +217,30 @@ BEGIN
    		+ ',' + @fields_source +','+ convert(nvarchar(max),@site_id) +
  		' FROM '+ @day_source +' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';'
-            
- 		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+        IF @commands like '%-PRINT%' PRINT @sqlCommand     
+
+ 		BEGIN TRY			
             SET @output=@output+ '-- INSERTING DAY DATA <br>'+ @sqlCommand + '<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+			IF @commands not like '%-PRINT%' 
             BEGIN 
-                EXEC( @sqlCommand)
-                SET @rows= @@ROWCOUNT
-                IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
-                IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
-                SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
+                IF @errors=0 BEGIN 
+                    IF (@on_schedule=1) BEGIN
+                        EXEC( @sqlCommand)
+                        SET @rows= @@ROWCOUNT
+                        IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  , @site_id
+                        IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand , @site_id
+                        SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
+                    END
+                    ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>'
+                END
+                ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>'       
             END
         END TRY
    		BEGIN CATCH  
    			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
             SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand, @site_id
         END CATCH;   
 
 	IF @commands  like '%-INTRADAY%' AND @commands not like '%-NOINTRADAY%' BEGIN  
@@ -222,20 +261,25 @@ BEGIN
  		BEGIN TRY
 			IF @commands like '%-PRINT%' PRINT @sqlCommand;
             SET @output=@output+ '-- DELETING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+			IF @commands not like '%-PRINT%'
             BEGIN
-                EXEC( @sqlCommand)
-                SET @rows= @@ROWCOUNT
-			    IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
-                SET @output=@output+'intraday records deleted ' + convert(varchar(10),@rows)+'<br><br>'  
-    			IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE INTRADAY',@rows  
-	    		IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY INTRADAY',@sqlCommand  
+            IF @errors=0 BEGIN 
+                IF (@on_schedule=1) BEGIN
+                    EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand  
+                    SET @output=@output+'Number of intraday records deleted ' + convert(varchar(10),@rows)+'<br><br>'  
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE INTRADAY',@rows  
+                    IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY INTRADAY',@sqlCommand  
+                END
+                ELSE SET @output=@output+'-- <b>WARNING: Delete intraday query was not executed due to the schedule parameter.</b> <br>'
+            END
+            ELSE SET @output=@output+'-- <b>ERROR: Intraday queries will not be executed due to errors. Please check the parameters.</b><br>'                  
             END
  		END TRY
  		BEGIN CATCH  
 			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
             SET @output=@output + dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN INTRADAY',@sqlCommand  
+			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN INTRADAY',@sqlCommand , @site_id 
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -252,24 +296,29 @@ BEGIN
  		+ ' FROM '+ @intraday_source + ' WHERE ' + @filter  
 		+ ' AND ' + @group_by + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' 
         + @groupby +';'
-            
- 		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+        IF @commands like '%-PRINT%' PRINT @sqlCommand    
+ 		BEGIN TRY		 
             SET @output=@output+ '-- DELETING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
+			IF @commands not like '%-PRINT%'
             BEGIN
-                EXEC( @sqlCommand);
-                SET @rows= @@ROWCOUNT;
-			    IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
-                SET @output=@output+'intraday records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
-			    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  
-			    IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand 
+                IF @errors=0 BEGIN 
+                    IF (@on_schedule=1) BEGIN
+                        EXEC( @sqlCommand);
+                        SET @rows= @@ROWCOUNT;
+                        IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
+                        SET @output=@output+'intraday records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
+                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  , @site_id
+                        IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand , @site_id
+                    END
+                ELSE SET @output=@output+'-- <b>WARNING: Insert intraday query was not executed due to the schedule parameter.</b> <br>'
+                END
+                ELSE SET @output=@output+'-- <b>ERROR: Intraday queries will not be executed due to errors. Please check the parameters.</b><br>'                  
             END
         END TRY
    		BEGIN CATCH  
    			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
             SET @output=@output + dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
-			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand
+			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand, @site_id
 	    END CATCH;   
 
 	END -- end if intraday
@@ -301,7 +350,7 @@ BEGIN
 	DEALLOCATE TAB_CURSOR
 
 	SET @data=DATEDIFF(second,@start_time,getdate())
-	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,'Duration sec' , @procedure_name , @data
+	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,'Duration sec' , @procedure_name , @data, @site_id
 
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
