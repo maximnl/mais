@@ -6,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE  PROCEDURE [dbo].[A_SP_FC_CORRELATION]
+ALTER  PROCEDURE [dbo].[A_SP_FC_CORRELATION]
  @activity_id int = 0 
 ,@session_id varchar(30)  = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
@@ -318,7 +318,26 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
 
 	CLOSE TAB_CURSOR 
 	DEALLOCATE TAB_CURSOR
-    SET @output=@output + '<br><br>This import procedure calculates a forecast from a forecast source for a correlated activity 
+     
+	SET @data=format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3')
+	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data, @site_id
+
+    SET @output=@output + '<br> It took ' + @data + ' sec.'
+
+    DECLARE @version nvarchar(max)
+    DECLARE @help nvarchar(max)
+    
+    SET @version='
+<br>   <i>VERSION INFORMATION </i> 
+<br>-- VERSION 20220708 Schedule parameter included in all Exec
+<br>-- VERSION 20220705 
+<br>-- Parent activity id is added to complement p1
+'
+    IF @commands like '%-VERSION%'  SET @output = @output + @version
+
+    SET @help='<br>
+    <br><i>HELP INFORMATION</i>
+    <br>This import procedure calculates a forecast from a forecast source for a correlated activity 
     based on the historical ratios defined by the correlated activity and correlated forecast (actuals). 
     <br>Procedure parameters: 
     <br>p1  - activity_correlated_id = '+ convert(varchar(max),@activity_correlated_id)+';
@@ -326,16 +345,10 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
     <br>p3 - forecast_source_id = '+ convert(varchar(max),@forecast_source_id)+';
     <br>p4 - lag - '+ convert(varchar(max),@lag)+';
     <br>p1 will be replaced by activity parent ='+ convert(varchar(max),@parent)+' if p1 is left empty.';
- 
-	SET @data=format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3')
-	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data, @site_id
 
-    SET @output=@output + '<br> It took ' + @data + ' sec.'
+    IF @commands like '%-HELP%'  SET @output = @output + @help
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
--- VERSION 20220705 
--- Parent activity id is added to complement p1
 
--- VERSION 20220708 Schedule parameter included in all Exec
 GO
