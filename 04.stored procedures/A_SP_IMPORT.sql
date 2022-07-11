@@ -5,18 +5,13 @@ GO
 
 -- version 20220711
 -- scheduling parameter added
+-- more error handling
+-- see more version information at the end
 
--- version 20220622
--- default day and intraday tables are used if the source parameter left empty.
-
--- version 20220603
--- generic import of transactional data into time series/ MAIS data format
--- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
--- template stored procedure for loading data from source tables
 ALTER     PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id nvarchar(50)  = null
-,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY
+,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY -VERSION
 ,@procedure_name nvarchar(200)='A_SP_IMPORT'
 ,@site_id int =0
 ,@import_id int =0
@@ -352,6 +347,22 @@ BEGIN
 	SET @data=DATEDIFF(second,@start_time,getdate())
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,'Duration sec' , @procedure_name , @data, @site_id
 
+
+    DECLARE @version nvarchar(max)='
+<br>
+-- version 20220711
+-- scheduling parameter added
+-- more error handling
+
+-- version 20220622
+-- default day and intraday tables are used if the source parameter left empty.
+
+-- version 20220603
+-- generic import of transactional data into time series/ MAIS data format
+-- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
+-- template stored procedure for loading data from source tables
+'
+    IF @commands like '%-VERSION%'  SET @output = @output + @version
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
