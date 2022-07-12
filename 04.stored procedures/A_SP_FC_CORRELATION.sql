@@ -9,7 +9,7 @@ GO
 ALTER  PROCEDURE [dbo].[A_SP_FC_CORRELATION]
  @activity_id int = 0 
 ,@session_id varchar(30)  = null
-,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID
+,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID -VERSION -HELP
 ,@procedure_name nvarchar(200)='A_SP_FC_CORRELATION'
 ,@site_id int = 0
 ,@import_id int = 0
