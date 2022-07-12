@@ -17,6 +17,7 @@ AS
 BEGIN
 
     SET NOCOUNT ON;
+    SET DATEFIRST 1
 	
 --  configuration
 	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]' -- data per day stored here
