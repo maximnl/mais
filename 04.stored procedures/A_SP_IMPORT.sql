@@ -11,7 +11,7 @@ GO
 ALTER     PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id nvarchar(50)  = null
-,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY -VERSION
+,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY -VERSION -HELP
 ,@procedure_name nvarchar(200)='A_SP_IMPORT'
 ,@site_id int =0
 ,@import_id int =0
@@ -20,6 +20,7 @@ ALTER     PROCEDURE [dbo].[A_SP_IMPORT]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET DATEFIRST 1
 --  configuration
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
 
@@ -33,6 +34,7 @@ BEGIN
 	DECLARE @schedule varchar(2000)=''
 	DECLARE @source varchar(2000)=''
 	DECLARE @group_by varchar(2000)=''
+
     -- parameters
 	DECLARE @p1 varchar(2000)=''                
 	DECLARE @p2 varchar(2000)=''
@@ -131,8 +133,8 @@ BEGIN
             END TRY
      		BEGIN CATCH  
                 SET @data=dbo.[A_FN_SYS_ErrorJson]()
-                SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
-                EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@output  , @site_id
+                SET @output=@output+@data+'<br><br>'
+                EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@data, @site_id
      		END CATCH;   
 
             IF @date_import_from<@date_source_min BEGIN SET @date_import_from=@date_source_min END
@@ -193,8 +195,8 @@ BEGIN
             END
  		END TRY
  		BEGIN CATCH  
-			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
-            SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			SET @data=dbo.[A_FN_SYS_ErrorJson]()
+            SET @output=@output+@data+'<br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand  , @site_id
  		END CATCH;   
 
@@ -220,8 +222,7 @@ BEGIN
             BEGIN 
                 IF @errors=0 BEGIN 
                     IF (@on_schedule=1) BEGIN
-                        EXEC( @sqlCommand)
-                        SET @rows= @@ROWCOUNT
+                        EXEC( @sqlCommand); SET @rows= @@ROWCOUNT
                         IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand  
                         IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  , @site_id
                         IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand , @site_id
@@ -311,8 +312,8 @@ BEGIN
             END
         END TRY
    		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
-            SET @output=@output + dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
+   			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
+            SET @output=@output + @data+'<br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand, @site_id
 	    END CATCH;   
 
@@ -346,23 +347,26 @@ BEGIN
 
 	SET @data=DATEDIFF(second,@start_time,getdate())
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,'Duration sec' , @procedure_name , @data, @site_id
-
+    SET @output=@output + '<br> It took ' + @data + ' sec.'
 
     DECLARE @version nvarchar(max)='
-<br>
--- version 20220711
--- scheduling parameter added
--- more error handling
+    <br>
+    -- version 20220711
+    -- scheduling parameter added
+    -- more error handling
 
--- version 20220622
--- default day and intraday tables are used if the source parameter left empty.
+    -- version 20220622
+    -- default day and intraday tables are used if the source parameter left empty.
 
--- version 20220603
--- generic import of transactional data into time series/ MAIS data format
--- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
--- template stored procedure for loading data from source tables
+    -- version 20220603
+    -- generic import of transactional data into time series/ MAIS data format
+    -- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
+    -- template stored procedure for loading data from source tables
 '
     IF @commands like '%-VERSION%'  SET @output = @output + @version
+
+    DECLARE @help nvarchar(max)=''
+    IF @commands like '%-HELP%'  SET @output = @output + @help
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
