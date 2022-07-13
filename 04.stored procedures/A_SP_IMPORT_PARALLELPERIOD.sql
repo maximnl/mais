@@ -6,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
+CREATE OR ALTER  PROCEDURE [dbo].[A_SP_IMPORT_PARALLELPERIOD]
  @activity_id int = 0 
 ,@session_id varchar(50)  = null
 ,@commands varchar(2000)='' -- -LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID -HELP -VERSION
@@ -256,6 +256,8 @@ BEGIN
 
 	SET @data=DATEDIFF(second,@start_time,getdate())
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  ,null  , @procedure_name , @data , @site_id
+    SET @output=@output + '<br> It took ' + @data + ' sec.'
+
     
     DECLARE @version nvarchar(max)='
     <br>
@@ -274,13 +276,18 @@ BEGIN
     IF @commands like '%-VERSION%'  SET @output = @output + @version
 
     DECLARE @help nvarchar(max)='
-    P1 - forecast from  <br>
-    P2 - level; day_week (default, per week), day_month - per month  <br>
-    P3 - filled in automatically based on P2   <br>
-    P4 - idem aan P3  <br>
-    P5 - lag years, 1 for last year, 2 for 2 years ago , etc. <br>
-    Filter - any filter on the activity fields. If empty , only the current activity id will go <br>
-    Source - leave empty, A_FACT_DAY will be subsitituted automatically
+	<H3>HELP INFORMATION </H3>
+	Calculates historical parallel periods. It can run on the current acitivity or in a batch mode. 
+	<br> Batch mode calculates a number of activities in a single query. This is done for easier configuration and performance considerations)
+    <br> P1 - forecast from  
+    <br> P2 - level; day_week (default, per week), day_month - per month  
+    <br> P3 - filled in automatically based on P2   
+    <br> P4 - idem aan P3  
+    <br> P5 - lag years, 1 for last year, 2 for 2 years ago , etc. 
+
+    <br> <br> Filter - Batch mode - any filter on the activity fields or use 11=11 for all activities. 
+	<br> Single activity mode - If empty or shorter than 4 symbols, the current activity will go <br>
+    Source - leave empty, A_FACT_DAY will be substituted automatically
 '
     IF @commands like '%-HELP%'  SET @output = @output + @help
     
