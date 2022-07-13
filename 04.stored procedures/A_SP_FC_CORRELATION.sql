@@ -50,6 +50,7 @@ BEGIN
 	-- source data analysis
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_source_max date='1900-01-01'
+    DECLARE @day_source varchar(max)=''
 
 	
 	DECLARE TAB_CURSOR CURSOR  FOR 
@@ -117,6 +118,8 @@ BEGIN
         DECLARE @lag INT=try_convert(int,@p4)  
         DECLARE @errors int = 0 
         DECLARE @on_schedule bit='1'
+        SET @day_source= case when @source>'' then @source else @fact_day end
+
         IF RTRIM(@schedule)>'' BEGIN
             SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' +@schedule + ' THEN ''1'' ELSE ''0'' END'
             EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
@@ -140,7 +143,7 @@ BEGIN
  	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
 	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
-		SET @sqlCommand ='DELETE FROM [dbo].[A_FACT_DAY] ' 
+		SET @sqlCommand ='DELETE FROM '+ @day_source + 
         + ' WHERE forecast_id=' + convert(varchar(10),@forecast_id) + ' AND activity_id=' + convert(varchar(10),@activity_id) 
         + ' AND [date] between ''' 
 		+ convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + '''' 
@@ -167,8 +170,8 @@ BEGIN
             END
  		END TRY
  		BEGIN CATCH  
-			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
-            SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
+			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
+            SET @output=@output+'<b>ERROR:' + @data + '</b><br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand, @site_id  
  		END CATCH;   
 
@@ -180,8 +183,8 @@ SET @sqlCommand = '
 ;with ACT as (
 SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM [dbo].[A_FACT_DAY] S
-RIGHT JOIN [dbo].[A_TIME_DATE] D on S.date=D.[date]
+FROM ' + @day_source + ' S
+RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
 WHERE S.activity_id='+ convert(varchar(10),@activity_id)+' AND forecast_id='+ convert(varchar(10),@forecast_correlated_id) +' 
 GROUP BY D.weeks_2000
 )
@@ -202,8 +205,8 @@ FROM ACT1)
 /* aggregated benchmark activity */
 ,REF as (SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM [dbo].[A_FACT_DAY] S
-RIGHT JOIN [dbo].[A_TIME_DATE] D on S.date=D.[date]
+FROM '+ @day_source +' S
+RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
 WHERE S.activity_id='+ convert(varchar(10),@activity_correlated_id )+ ' AND forecast_id='+ convert(varchar(10),@forecast_correlated_id ) 
 + ' GROUP BY D.weeks_2000)
 
@@ -222,8 +225,8 @@ FROM REF1)
 /* aggregate correlation forecast */
 ,F as (SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM [dbo].[A_FACT_DAY] S
-RIGHT JOIN [dbo].[A_TIME_DATE] D on S.date=D.[date]
+FROM '+ @day_source +' S
+RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
 WHERE S.activity_id='+ convert(varchar(10),@activity_correlated_id) +' and forecast_id='+ convert(varchar(10),@forecast_source_id) 
 +' GROUP BY D.weeks_2000)
 
@@ -259,13 +262,13 @@ left join R as R52 on F1.timekey=R52.timekey+52
 WHERE (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) >0
 )  
 
-INSERT INTO [dbo].'+ @fact_day 
+INSERT INTO '+ @day_source 
         +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) '+
        ' SELECT D.date, '+ convert(varchar(10),@activity_id)+', ' + convert(varchar(10),@forecast_id) 
 	+ ',' + convert(varchar(10),@import_id)  
     + ',R1.f/7 ,' +  convert(nvarchar(max),@site_id) 
     + ' FROM R1 
-INNER JOIN [dbo].[A_TIME_DATE] D on R1.timekey=D.[weeks_2000] 
+INNER JOIN [A_TIME_DATE] D on R1.timekey=D.[weeks_2000] 
 WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)+ ''''
 
         
