@@ -34,7 +34,7 @@ BEGIN
 	DECLARE @schedule varchar(2000)=''
 	DECLARE @source varchar(2000)=''
 	DECLARE @group_by varchar(2000)=''
-
+    
     -- parameters
 	DECLARE @p1 varchar(2000)=''                
 	DECLARE @p2 varchar(2000)=''
@@ -248,7 +248,7 @@ BEGIN
 	--  CLEAN INTRADAY
 	--------------------------------------------------------------------------------	
 		SET @sqlCommand = 
- 		'DELETE	FROM '+ @fact_intraday 
+ 		'DELETE	FROM '+ @intraday_source 
         +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' 
         + convert(char(10),@date_import_until,126) +'''	AND activity_id =' +  convert(nvarchar(max),@activity_id) 
         + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) 
@@ -283,7 +283,7 @@ BEGIN
 	-------------------------------------------------------------------------------------
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ',',@intraday_interval_id) END ELSE SET @groupby=''
         
-		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday 
+		SET @sqlCommand = 'INSERT INTO '+ @intraday_source 
         +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id)'
         +' SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ',' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
@@ -294,7 +294,7 @@ BEGIN
         + @groupby +';'
         IF @commands like '%-PRINT%' PRINT @sqlCommand    
  		BEGIN TRY		 
-            SET @output=@output+ '-- DELETING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
+            SET @output=@output+ '-- INSERTING INTRADAY DATA <br>'+ @sqlCommand + '<br><br>';
 			IF @commands not like '%-PRINT%'
             BEGIN
                 IF @errors=0 BEGIN 
@@ -350,23 +350,24 @@ BEGIN
     SET @output=@output + '<br> It took ' + @data + ' sec.'
 
     DECLARE @version nvarchar(max)='
-    <br>
+    <br><i>VERSION INFORMATION </i>
     -- version 20220711
     -- scheduling parameter added
     -- more error handling
-
+    -- intraday source fix for empty situation
+    <br>
     -- version 20220622
     -- default day and intraday tables are used if the source parameter left empty.
-
+    <br>
     -- version 20220603
     -- generic import of transactional data into time series/ MAIS data format
     -- this SP will generate queries and run/print them for every row from [A_IMPORT_RUN] view
-    -- template stored procedure for loading data from source tables
-'
+    -- template stored procedure for loading data from source tables'
     IF @commands like '%-VERSION%'  SET @output = @output + @version
 
-    DECLARE @help nvarchar(max)=''
+    DECLARE @help nvarchar(max)='<br><i>HELP INFORMATION</i>'
     IF @commands like '%-HELP%'  SET @output = @output + @help
+
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
