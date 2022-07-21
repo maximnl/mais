@@ -1,3 +1,6 @@
+USE [Anwb_Rhl]
+GO
+/****** Object:  StoredProcedure [A_SP_IMPORT]    Script Date: 21-7-2022 09:13:59 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -8,7 +11,7 @@ GO
 -- more error handling
 -- see more version information at the end
 
-ALTER     PROCEDURE [dbo].[A_SP_IMPORT]
+ALTER     PROCEDURE [A_SP_IMPORT]
  @activity_id int = 0 
 ,@session_id nvarchar(50)  = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE -PRINT -NOGROUPBY -SUMFIELDS -NOINTRADAY -NODELTA -INTRADAY -VERSION -HELP
@@ -248,7 +251,7 @@ BEGIN
 	--  CLEAN INTRADAY
 	--------------------------------------------------------------------------------	
 		SET @sqlCommand = 
- 		'DELETE	FROM '+ @intraday_source 
+ 		'DELETE	FROM '+  @fact_intraday 
         +' WHERE [date] BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' 
         + convert(char(10),@date_import_until,126) +'''	AND activity_id =' +  convert(nvarchar(max),@activity_id) 
         + '	AND forecast_id = ' +  convert(nvarchar(max),@forecast_id) 
@@ -372,4 +375,3 @@ BEGIN
 
 END
 
-GO
