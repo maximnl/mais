@@ -1,5 +1,4 @@
-USE [Anwb_Rhl]
-GO
+
 /****** Object:  StoredProcedure [A_SP_IMPORT]    Script Date: 21-7-2022 09:13:59 ******/
 SET ANSI_NULLS OFF
 GO
