@@ -1,5 +1,5 @@
-
-/****** Object:  StoredProcedure [A_SP_IMPORT]    Script Date: 21-7-2022 09:13:59 ******/
+ 
+/****** Object:  StoredProcedure [A_SP_IMPORT]    Script Date: 21-7-2022 09:23:26 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -285,7 +285,7 @@ BEGIN
 	-------------------------------------------------------------------------------------
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @group_by, ',',@intraday_interval_id) END ELSE SET @groupby=''
         
-		SET @sqlCommand = 'INSERT INTO '+ @intraday_source 
+		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday 
         +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id)'
         +' SELECT ' + @group_by + ',' +  convert(nvarchar(max),@activity_id)  
    		+ ',' +  convert(nvarchar(max),@forecast_id) + ','+ convert(nvarchar(max),@import_id)
