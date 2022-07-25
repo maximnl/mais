@@ -85,7 +85,7 @@ BEGIN
     WHERE   (import_id=@import_id or @import_id=0) AND (site_id=@site_id or @site_id=0)  
     AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) 
     AND (activity_id=@activity_id or @activity_id=0)
-    AND (category=@category or @category='')
+    AND (category like @category or @category='')
     ORDER BY [sort_order]
     
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands, @site_id
