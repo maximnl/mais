@@ -22,6 +22,7 @@ BEGIN
 --  configuration
 	DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]' -- data per day stored here
     DECLARE @sqlCommand NVARCHAR(MAX) -- 
+    DECLARE @message NVARCHAR(MAX)
 
 --  source data parameters
 	DECLARE @forecast_id int = 0
@@ -60,8 +61,8 @@ BEGIN
       ,[p1]
       ,[p2]
       ,[p3]
-      ,[p4]
-      ,[p5]
+      ,isnull([p4],0) -- lag
+      ,isnull([p5],1) -- coef
       ,[date_import_from]
       ,[date_import_until]
       ,[fields_source]
@@ -115,7 +116,8 @@ BEGIN
         DECLARE @activity_correlated_id INT=try_convert(int,@p1)  
         DECLARE @forecast_correlated_id INT=try_convert(int,@p2) 
         DECLARE @forecast_source_id INT=try_convert(int,@p3)	
-        DECLARE @lag INT=try_convert(int,@p4)  
+        DECLARE @lag INT=try_convert(int,@p4) 
+        DECLARE @coef real=try_convert(real,@p5)  
         DECLARE @errors int = 0 
         DECLARE @on_schedule bit='1'
         SET @day_source= case when @source>'' then @source else @fact_day end
@@ -143,7 +145,7 @@ BEGIN
  	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
 	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
-		SET @sqlCommand ='DELETE FROM '+ @day_source + 
+		SET @sqlCommand =';DELETE FROM '+ @day_source + 
         + ' WHERE forecast_id=' + convert(varchar(10),@forecast_id) + ' AND activity_id=' + convert(varchar(10),@activity_id) 
         + ' AND [date] between ''' 
 		+ convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + '''' 
@@ -171,6 +173,7 @@ BEGIN
  		END TRY
  		BEGIN CATCH  
 			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
+            SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             SET @output=@output+'<b>ERROR:' + @data + '</b><br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand, @site_id  
  		END CATCH;   
@@ -218,7 +221,7 @@ FROM REF)
 
 /* add ma lagging */
 ,REF2 as(
-SELECT timekey--, value1
+SELECT timekey
 , LAG(value1,' + convert(varchar(10),@lag) +' ) over (order by timekey) as value1
 FROM REF1)
 
@@ -261,29 +264,34 @@ left join R as R5 on F1.timekey=R5.timekey+5
 left join R as R52 on F1.timekey=R52.timekey+52
 WHERE (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) >0
 )  
-
-INSERT INTO '+ @day_source 
-        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) '+
+ INSERT INTO '+ @day_source 
+        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id,date_updated) '+
        ' SELECT D.date, '+ convert(varchar(10),@activity_id)+', ' + convert(varchar(10),@forecast_id) 
 	+ ',' + convert(varchar(10),@import_id)  
-    + ',R1.f/7 ,' +  convert(nvarchar(max),@site_id) 
-    + ' FROM R1 
+    + ',R1.f/7 * ' + convert(nvarchar(max),@coef) + ',' +  convert(nvarchar(max),@site_id)  
+    + ',getdate()  FROM R1 
 INNER JOIN [A_TIME_DATE] D on R1.timekey=D.[weeks_2000] 
-WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)+ ''''
+WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)+ ''';'
 
         
  		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
+			IF @commands like '%-PRINT%' PRINT @sqlCommand; 
             SET @output=@output+ '-- INSERT DAY DATA QUERY <br>'+ @sqlCommand + '<br><br>';
 			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
             BEGIN 
                 IF @errors=0 BEGIN 
                     IF (@on_schedule=1) BEGIN
                         EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
+                        SET @message='-- <i>Total of records inserted ' + convert(varchar(10),@rows)+'</i><br><br>';
+                        PRINT @message;
                         SET @output=@output+'-- Insert query was executed <br>';
-                        SET @output=@output+'-- <i>Total of records inserted ' + convert(varchar(10),@rows)+'</i><br><br>';  
+                        SET @output=@output+@message;  
                     END
-                    ELSE SET @output=@output+'-- <b>WARNING: Insert query was not executed due to the schedule parameter.</b> </b><br>'
+                    ELSE BEGIN
+                            SET @message='-- <b>WARNING: Insert query was not executed due to the schedule parameter.</b> </b><br>';
+                            SET @output=@output+@message; 
+                            PRINT @message; 
+                    END
                 END              
                 IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand, @site_id  
                 IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  ,@site_id
@@ -292,6 +300,7 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
         END TRY
    		BEGIN CATCH  
    			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
+            SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             SET @output=@output+dbo.[A_FN_SYS_ErrorJson]()+'<br><br>'
 			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'INSERT DAY',@sqlCommand, @site_id
 	    END CATCH;   	  
@@ -347,6 +356,7 @@ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and 
     <br>p2 - forecast_correlated_id = '+ convert(varchar(max),@forecast_correlated_id)+';
     <br>p3 - forecast_source_id = '+ convert(varchar(max),@forecast_source_id)+';
     <br>p4 - lag - '+ convert(varchar(max),@lag)+';
+    <br>p5 - coefficient, default is 1. = '+ convert(varchar(max),@coef)+';
     <br>p1 will be replaced by activity parent ='+ convert(varchar(max),@parent)+' if p1 is left empty.';
 
     IF @commands like '%-HELP%'  SET @output = @output + @help
