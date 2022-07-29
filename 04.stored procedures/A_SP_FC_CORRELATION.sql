@@ -2,17 +2,17 @@ SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
 GO
- 
-
 
 -- template stored procedure for loading data from source tables
 ALTER  PROCEDURE [dbo].[A_SP_FC_CORRELATION]
  @activity_id int = 0 
+,@forecast_id int = 0 -- run imports for a forecast_id
 ,@session_id varchar(30)  = null
 ,@commands varchar(2000)='' -- '-LOG_ROWCOUNT -LOG_INSERT -LOG_DELETE' --'-PRINT' -NOGROUPBY -SUMFIELDS -SET_IMPORT_ID -VERSION -HELP
 ,@procedure_name nvarchar(200)='A_SP_FC_CORRELATION'
 ,@site_id int = 0
 ,@import_id int = 0
+,@category nvarchar(200) ='' -- procedure category to run; empty to run all
 AS
 BEGIN
 
@@ -25,7 +25,6 @@ BEGIN
     DECLARE @message NVARCHAR(MAX)
 
 --  source data parameters
-	DECLARE @forecast_id int = 0
 	DECLARE @filter nvarchar(4000)='' -- where filter for filtering source data
 	DECLARE @date_import_from date='9999-01-01' -- calculated by the import query using imports and procedures fields
 	DECLARE @date_import_until date='1900-01-01'
@@ -61,14 +60,14 @@ BEGIN
       ,[p1]
       ,[p2]
       ,[p3]
-      ,isnull([p4],0) -- lag
-      ,isnull([p5],1) -- coef
+      ,[p4] -- lag
+      ,[p5] -- coef
       ,[date_import_from]
       ,[date_import_until]
       ,[fields_source]
       ,[fields_target]
       ,[schedule]
-      ,isnull([filter],'1=1') filter
+      ,[filter]
       ,[source]
       ,[group_by]
 	  ,concat(@commands,' ',commands)
@@ -77,9 +76,9 @@ BEGIN
       ,parent
     FROM   dbo.[A_IMPORT_RUN]
     WHERE   (import_id=@import_id or @import_id=0) 
-		AND (site_id=@site_id or site_id is null or @site_id=0)
-		AND ([procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) 
-		and (activity_id=@activity_id or @activity_id=0)
+    AND (site_id=@site_id or site_id is null or @site_id=0)
+    AND ([procedure_id] like @procedure_name or [procedure_name] like @procedure_name or procedure_code like @procedure_name or @import_id>0) 
+    and (activity_id=@activity_id or @activity_id=0)
     ORDER BY [sort_order]
     
 	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands, @site_id
@@ -119,57 +118,54 @@ BEGIN
         DECLARE @lag INT=try_convert(int,@p4) 
         DECLARE @coef real=try_convert(real,@p5)  
         DECLARE @errors int = 0 
-        DECLARE @on_schedule bit='1'
-        SET @day_source= case when @source>'' then @source else @fact_day end
+        DECLARE @on_schedule bit=1
 
-        IF RTRIM(@schedule)>'' BEGIN
-            SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' +@schedule + ' THEN ''1'' ELSE ''0'' END'
-            EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
-        END 
+        
 
         IF @activity_correlated_id= 0 SET @activity_correlated_id=try_convert(int,@parent)
         IF @activity_correlated_id= 0 BEGIN
+            SET @errors=@errors+1;
             SET @output=@output+'-- <b>ERROR:correlated activity was not set. Use p1 or activity parent field.</b><br>';
         END
+        IF @forecast_correlated_id=0 OR @forecast_source_id=0 SET @errors=@errors+1  
+        if @coef=0 BEGIN SET @coef=1; SET @output=@output+'-- <b>WARNING: coeficient [p5] is not set or set to 0. Setting 1 by default.</b><br>';END
 
-        IF @activity_correlated_id=0 OR @forecast_correlated_id=0 OR @forecast_source_id=0 SET @errors=@errors+1  
-
+        
 		SET @date_import_from=isnull(@date_import_from,[dbo].[A_FN_TI_FirstDayCurrentYear](NULL));
  		SET @date_import_until=isnull(@date_import_until,[dbo].[A_FN_TI_LastDayCurrentYear](NULL));
 
 		-- we skip source delta check , there are no requirements
-		 
+        -- check scheduling
+		IF RTRIM(@schedule)>'' BEGIN
+            SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' +@schedule + ' THEN ''1'' ELSE ''0'' END'
+            EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
+        END  
 	----------------------------------------------------------------------------------------------------------------------
 	--  CLEAN DAY
 
  	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
 	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
-		SET @sqlCommand =';DELETE FROM '+ @day_source + 
-        + ' WHERE forecast_id=' + convert(varchar(10),@forecast_id) + ' AND activity_id=' + convert(varchar(10),@activity_id) 
+		SET @sqlCommand =';DELETE FROM '+ @fact_day + 
+        + ' WHERE activity_id=' + convert(varchar(10),@activity_id)  
+        + ' AND forecast_id=' + convert(varchar(10),@forecast_id)  
+        + '	AND site_id = ' +  convert(nvarchar(max),@site_id)
         + ' AND [date] between ''' 
-		+ convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + '''' 
-        + '	AND site_id = ' +  convert(nvarchar(max),@site_id);
-		  
- 		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand 
-            SET @output=@output+'-- DELETE DAYDATA QUERY <br>'+@sqlCommand+'<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
-            BEGIN
-                IF @errors=0 BEGIN 
-                    IF (@on_schedule=1) BEGIN
-                        EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;
-                        SET @output=@output+'-- DELETE QUERY EXECUTED <br>';
-                        SET @output=@output+'-- <i>Total records deleted ' + convert(varchar(10),@rows)+'</i><br><br>'
-                    END
-                    ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>'
+		+ convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + ''';';
+		SET @output=@output+'-- DELETE DAYDATA QUERY <br>'+@sqlCommand+'<br><br>';  
+        IF @commands like '%-PRINT%' PRINT @sqlCommand 
+        ELSE BEGIN TRY
+            IF @errors=0 BEGIN 
+                IF (@on_schedule=1) BEGIN
+                    EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;
+                    SET @output=@output+'-- DELETE QUERY EXECUTED <br>';
+                    SET @output=@output+'-- <i>Total records deleted ' + convert(varchar(10),@rows)+'</i><br><br>';
                 END
-                ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>'       
-                IF @date_import_until<@date_import_from AND  @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG]  'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON DELETE', @sqlCommand, @site_id  
-                
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows, @site_id  
-                IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand, @site_id  
+                ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>';
             END
+            ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>' ;      
+            IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows, @site_id ; 
+            IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand, @site_id ; 
  		END TRY
  		BEGIN CATCH  
 			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
@@ -186,10 +182,11 @@ SET @sqlCommand = '
 ;with ACT as (
 SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM ' + @day_source + ' S
-RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
-WHERE S.activity_id='+ convert(varchar(10),@activity_id)+' AND forecast_id='+ convert(varchar(10),@forecast_correlated_id) +' 
-GROUP BY D.weeks_2000
+ FROM ' + @fact_day + ' S
+ RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
+ WHERE S.activity_id='+ convert(varchar(10),@activity_id)
++' AND forecast_id='+ convert(varchar(10),@forecast_correlated_id) 
++' GROUP BY D.weeks_2000
 )
 ,
 /* add moving average / smoothing */
@@ -208,7 +205,7 @@ FROM ACT1)
 /* aggregated benchmark activity */
 ,REF as (SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM '+ @day_source +' S
+FROM '+ @fact_day +' S
 RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
 WHERE S.activity_id='+ convert(varchar(10),@activity_correlated_id )+ ' AND forecast_id='+ convert(varchar(10),@forecast_correlated_id ) 
 + ' GROUP BY D.weeks_2000)
@@ -228,7 +225,7 @@ FROM REF1)
 /* aggregate correlation forecast */
 ,F as (SELECT weeks_2000 as timekey
 , sum(isnull(value1,0)) value1
-FROM '+ @day_source +' S
+FROM '+ @fact_day +' S
 RIGHT JOIN [A_TIME_DATE] D on S.date=D.[date]
 WHERE S.activity_id='+ convert(varchar(10),@activity_correlated_id) +' and forecast_id='+ convert(varchar(10),@forecast_source_id) 
 +' GROUP BY D.weeks_2000)
@@ -258,45 +255,42 @@ SELECT   F1.timekey, R1.actual1, R1.ACT_value1 , R1.REF_value1, F1.value1 foreca
 ,R52.ratio1 as f52
 , (isnull(F1.value1*R1.ratio1,0) + isnull(F1.value1*R5.ratio1,0) + isnull(F1.value1*R52.ratio1,0) )
 / (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) f
-FROM F1
-left join R as R1 on F1.timekey=R1.timekey+1 
-left join R as R5 on F1.timekey=R5.timekey+5
-left join R as R52 on F1.timekey=R52.timekey+52
-WHERE (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) >0
+ FROM F1
+ left join R as R1 on F1.timekey=R1.timekey+1 
+ left join R as R5 on F1.timekey=R5.timekey+5
+ left join R as R52 on F1.timekey=R52.timekey+52
+ WHERE (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) >0
 )  
- INSERT INTO '+ @day_source 
+ INSERT INTO '+ @fact_day 
         +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id,date_updated) '+
        ' SELECT D.date, '+ convert(varchar(10),@activity_id)+', ' + convert(varchar(10),@forecast_id) 
 	+ ',' + convert(varchar(10),@import_id)  
-    + ',R1.f/7 * ' + convert(nvarchar(max),@coef) + ',' +  convert(nvarchar(max),@site_id)  
+    + ',R1.f/7 * ' + convert(varchar(max),@coef) + ',' +  convert(varchar(10),@site_id)  
     + ',getdate()  FROM R1 
-INNER JOIN [A_TIME_DATE] D on R1.timekey=D.[weeks_2000] 
-WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)+ ''';'
+ INNER JOIN [A_TIME_DATE] D on R1.timekey=D.[weeks_2000] 
+ WHERE D.date between ''' + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126)+ ''';'
 
-        
- 		BEGIN TRY
-			IF @commands like '%-PRINT%' PRINT @sqlCommand; 
-            SET @output=@output+ '-- INSERT DAY DATA QUERY <br>'+ @sqlCommand + '<br><br>';
-			IF @commands not like '%-PRINT%' AND @date_import_until>=@date_import_from 
-            BEGIN 
-                IF @errors=0 BEGIN 
-                    IF (@on_schedule=1) BEGIN
-                        EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
-                        SET @message='-- <i>Total of records inserted ' + convert(varchar(10),@rows)+'</i><br><br>';
-                        PRINT @message;
-                        SET @output=@output+'-- Insert query was executed <br>';
-                        SET @output=@output+@message;  
-                    END
-                    ELSE BEGIN
-                            SET @message='-- <b>WARNING: Insert query was not executed due to the schedule parameter.</b> </b><br>';
-                            SET @output=@output+@message; 
-                            PRINT @message; 
-                    END
-                END              
-                IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand, @site_id  
-                IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  ,@site_id
-                IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand ,@site_id
-            END
+        SET @output=@output+ '-- INSERT DAY DATA QUERY <br>'+ @sqlCommand + '<br><br>';
+ 		
+        IF @commands like '%-PRINT%' PRINT @sqlCommand; 
+        ELSE BEGIN TRY  
+            IF @errors=0 BEGIN 
+                IF (@on_schedule=1) BEGIN
+                    EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
+                    SET @message='-- <i>Total of records inserted ' + convert(varchar(10),@rows)+'</i><br><br>';
+                    PRINT @message;
+                    SET @output=@output+'-- Insert query was executed <br>';
+                    SET @output=@output+@message;  
+                END
+                ELSE BEGIN
+                        SET @message='-- <b>WARNING: Insert query was not executed due to the schedule parameter.</b> </b><br>';
+                        SET @output=@output+@message; 
+                        PRINT @message; 
+                END
+            END              
+            IF @date_import_until<@date_import_from AND @commands like '%-LOG_ROWCOUNT%'  EXEC dbo.[A_SP_SYS_LOG] 'IMPORT WARNING' ,@session_id ,@import_id ,'NODATA ON INSERT', @sqlCommand, @site_id  
+            IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS INSERT DAY',@rows  ,@site_id
+            IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@import_id ,'INSERT QUERY DAY',@sqlCommand ,@site_id
         END TRY
    		BEGIN CATCH  
    			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) 
