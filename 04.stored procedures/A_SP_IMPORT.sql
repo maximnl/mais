@@ -139,6 +139,7 @@ BEGIN
         END
         
         SET @day_source=@source;
+        SET @intraday_source=@source;
         -- if source is a framework table than add site_id filter or set fact_day as default
         IF @source='' BEGIN
             SET @day_source=@fact_day;
