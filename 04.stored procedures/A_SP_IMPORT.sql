@@ -7,7 +7,7 @@ GO
 -- next update
 -- change order of where parameters to used indexes. put activity_id and forecast_id in front
 
-CREATE OR ALTER PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE OR ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
  @activity_id int = 0 -- run imports for an activity_id
 ,@forecast_id int = 0 -- run imports for a forecast_id
 ,@import_id int = 0 -- run import_id
@@ -68,11 +68,11 @@ BEGIN
     SELECT import_id 
  	  ,[activity_id]
       ,[forecast_id]
-      ,isnull([p1],'')
-      ,isnull([p2],'')
-      ,isnull([p3],'')
-      ,isnull([p4],'')
-      ,isnull([p5],'')
+      ,[p1]
+      ,[p2]
+      ,[p3]
+      ,[p4]
+      ,[p5]
       ,[date_import_from]
       ,[date_import_until]
       ,[fields_source]
@@ -435,7 +435,7 @@ BEGIN
     <tr><td>-NOGROUPBY      </td><td>Cancels grouping by by group by/date field.</td></tr>
     <tr><td>-SUMFIELDS      </td><td>Adds sum function for all source fields given that a simple commaseparated list is provided.</td></tr>
     <tr><td>-NODELTA        </td><td>Skips any source date range detaction and loads data according to [Date Import From]/[Date Import Until] parameters.</td></tr>
-    <tr><td>-INTRADAY       </td><td>Triggers intraday table update. Additional p1 parameter let setup interval detection logic. By default the source must have interval_id field in line with A_TIME_INTERVAL table</td></tr>
+    <tr><td>-INTRADAY       </td><td>Triggers intraday table update. The source/view must have interval_id field in line with A_TIME_INTERVAL table</td></tr>
     <tr><td>-NOINTRADAY     </td><td>Skips intraday update even if it was set up in a procedure or an import.</td></tr>
     <tr><td>-LOG_ROWCOUNT   </td><td>Logs a number of rows affected after all executions to A_SYS_LOG.</td></tr>
     <tr><td>-LOG_INSERT     </td><td>Logs insert queries.</td></tr>
