@@ -1,6 +1,6 @@
 # Guide
 
-## A step by step guide to MAISED
+## A step by step guide to MAIS
 
 ### Lesson 1: Create an activity 
 
