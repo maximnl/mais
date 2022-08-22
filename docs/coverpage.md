@@ -10,4 +10,4 @@
 - Benefit from forecasting algorithms and other community (time series) data
 
 [GitHub](https://github.com/maximnl/mais/)
-[Getting Started](overview)
+[Getting Started](overview.md)
