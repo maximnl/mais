@@ -4,7 +4,7 @@
 
 ## Quick start
 
-To experient MAISED right away, try [MAISED](https://maised.com) :
+To experient MAISED right away, login or make an account(comming soon) at [MAISED](https://maised.com) :
 
 
 ## What's Next?
