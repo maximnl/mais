@@ -1,5 +1,7 @@
 # Getting Started
 
+[MAIS documentation site](https://maximnl.github.io/mais/)
+
 ## Quick start
 
 To experient MAISED right away, try [MAISED](https://maised.com) :
