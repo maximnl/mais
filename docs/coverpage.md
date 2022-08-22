@@ -5,4 +5,4 @@
 > A full control over reporting data 
 
 [GitHub](https://github.com/maximnl/mais/)
-[Getting Started](#getting-started)
+[Getting Started](#overview)
