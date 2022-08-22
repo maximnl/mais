@@ -1,21 +1,32 @@
---create table [A_TIME_INTERVAL] (
---[interval_id] [smallint],
---[time_start] [nvarchar] (5),
---[time_end] [nvarchar] (5) NULL,
---[time_start_datetime] [datetime] NULL,
---[time_end_datetime] [datetime] NULL,
---[time_hour] [nvarchar] (2) NULL,
---[time_hour_int] [tinyint] NULL,
---[time_halfhour] [nchar] (5) NULL,
---[time_minute] [nvarchar] (2) NULL,
---[time_minute_int] [tinyint] NULL,
---[time_start_sec] [nvarchar] (10) NULL,
---[time_end_sec] [nvarchar] (10) NULL,
---[period_30] [bit] NULL,
---[period_60] [bit] NULL);
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[A_TIME_INTERVAL](
+	[interval_id] [smallint] NOT NULL,
+	[time_start] [nvarchar](5) NOT NULL,
+	[time_end] [nvarchar](5) NULL,
+	[time_start_datetime] [datetime] NULL,
+	[time_end_datetime] [datetime] NULL,
+	[time_hour] [nvarchar](2) NULL,
+	[time_hour_int] [tinyint] NULL,
+	[time_halfhour] [nchar](5) NULL,
+	[time_minute] [nvarchar](2) NULL,
+	[time_minute_int] [tinyint] NULL,
+	[time_start_sec] [nvarchar](10) NULL,
+	[time_end_sec] [nvarchar](10) NULL,
+	[period_30] [bit] NULL,
+	[period_60] [bit] NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[A_TIME_INTERVAL] ADD  CONSTRAINT [PK_Dim_Time_Interval1] PRIMARY KEY CLUSTERED 
+(
+	[interval_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
 
 
-insert [A_TIME_INTERVAL] ([interval_id],[time_start],[time_end],[time_start_datetime],[time_end_datetime],[time_hour],[time_hour_int],[time_halfhour],[time_minute],[time_minute_int],[time_start_sec],[time_end_sec],[period_30],[period_60])
+insert [dbo].[A_TIME_INTERVAL] ([interval_id],[time_start],[time_end],[time_start_datetime],[time_end_datetime],[time_hour],[time_hour_int],[time_halfhour],[time_minute],[time_minute_int],[time_start_sec],[time_end_sec],[period_30],[period_60])
 select 0,N'00:00',N'00:00','1899-12-30 00:00:00.000','1899-12-30 00:14:59.000',N'00',0,N'00-29',N'00',0,N'0:00:00',N'0:14:59',1,1 UNION ALL
 select 1,N'00:15',N'00:15','1899-12-30 00:15:00.000','1899-12-30 00:29:59.000',N'00',0,NULL,N'15',15,N'0:15:00',N'0:29:59',0,0 UNION ALL
 select 2,N'00:30',N'00:30','1899-12-30 00:30:00.000','1899-12-30 00:44:59.000',N'00',0,N'30-59',N'30',30,N'0:30:00',N'0:44:59',1,0 UNION ALL
