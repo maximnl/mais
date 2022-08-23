@@ -2,7 +2,8 @@ Welcome to MAIS documentation.
 MAIS is a time series framework for reporting data applications.
 
 # Abstract
-A time series version of a data warehouse enables an agile, audited and utra fast data wallet for reporting and business self service. 
+A time series version of a data warehouse enables an agile, audited and utra fast data wallet for reporting and business self service.
+
 ?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data definitions do not match business definitions.
 
 We propose a solution to a last mile home problem, which in the context of management reporting means additional data filtering/modifications are done on the reporting side instead of centralizing and managing them in the underlying data systems. 
