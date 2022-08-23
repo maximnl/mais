@@ -6,7 +6,7 @@ A time series version of a data warehouse enables an agile, audited and utra fas
 
 ?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data definitions do not match business definitions.
 
-We propose a solution to a last mile home problem. In the context of reporting this problem means additional data, data filtering, data modifications are required on the reporting side. This could lead to data heavy, decentralized, less ICT supported reporting process. 
+We propose a solution to a last mile home problem. In the context of management reporting this problem means undesired steps which complicate the process: inclusion of extra source data, data filtering, data modifications are required on the reporting side. This could lead to data heavy, decentralized, less ICT supported reporting process. 
 
 A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates ** two major benefits ** for reporting applications:
 
@@ -18,7 +18,18 @@ MAIS approach does require a source data to be processed in the time series form
 
 # Foreword 
 
-A data management strategy for management reports seems to be a straightforward path: we develop a data warehouse and we use it to feed data to all the reports. In practice, this turn out to be a far more complex process which can be full of incidents and frustrations over the long run: change management, data consistency, changing business requirements can increasingly consume a great portion of your staff. While we would never attempt to design a car that serves both a transport company and a celebrity, yet we aim to enable reports with a single strategy. Treating all the reports technically similar is an attractive solution. In practice however, some reports are used for daily meetings and have a high load while ad hoc reports can be used once a year or even just once. Some reports carry data from a single operational source while other reports such as monthly closure reports, span many operational systems and bring business related information together. Management reports can span over different sources such as FTEs, forecasts, ratios, indicators, last year performance. If we start recognizing different categories of reports, we may notice different needs for performance, integration, analytics etc. Does a warehouse surves all the reports equally well? 
+A data management strategy for management reports seems to be a straightforward path: we develop a data warehouse and we use it to feed data to all the reports. In practice, this turn out to be a far more complex process which can be full of incidents and frustrations over the long run: change management, data consistency, changing business requirements can increasingly consume a great portion of your staff. 
+
+?>
+While we would never attempt to design a car that serves both a transport company and a celebrity, yet we aim to enable reports with a single strategy. 
+
+Treating all the reports in a technically similar way is an attractive solution. Nevertheless, it is easy to observe that:
+
+?>
+A) Some reports are used for daily meetings and have a high load while other ad hoc reports can be used once a year or one time. 
+B) Some reports carry data from a single operational source while other reports such as monthly closure reports, span many operational systems and require to bring diverse information together for critical business decisions. 
+
+Management reports can span over different sources such as FTEs, forecasts, ratios, indicators, last year performance. If we start recognizing different categories of reports, we may notice different needs for performance, integration, analytics etc. Does a warehouse surves all the reports equally well? 
 
 Data warehouse strategy is a time proven approach. It is challenging to reconsider strong and weak sides of this information strategy in the modern reporting context. Last years trends such as digitalization, multi skilled planning, working from home, data driven daily meetings, working agile, cloud adoption, adoption of analytics, scarcity of ICT staff and more, may challenge any organization. One way is to continue add hardware and human resources, while another way is to diversify information strategies and reporting strategies in particular. Changing reporting tools is a part of the strategy. It may just shift the bottlenecks from the data warehouse to reporting data models. 
 
