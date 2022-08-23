@@ -19,8 +19,7 @@ MAIS approach does require a source data to be processed in the time series form
 
 A data management strategy for management reports seems to be a straightforward path: we develop a data warehouse and we use it to feed data to all the reports. In practice, this turn out to be a far more complex process which can be full of incidents and frustrations over the long run: change management, data consistency, changing business requirements can increasingly consume a great portion of your staff. 
 
-?>
-While we would never attempt to design a car that serves both a transport company and a celebrity, yet we aim to enable reports with a single strategy. 
+?>While we would never attempt to design a car that serves both a transport company and a celebrity, yet we aim to enable reports with a single strategy. 
 
 Treating all the reports in a technically similar way is an attractive solution. Nevertheless, it is easy to observe that:
 
