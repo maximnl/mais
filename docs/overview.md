@@ -43,7 +43,7 @@ We could jump to a technical details of MAIS, but we would like to spend everyon
 Maxim Ivashkov - developer and founder of MAIS.
 
 
-# Introduction for the business/managers
+# Planning and forecasting
 
 Operational businesses/departments such as contact centers, logistical centers or mass-project organizations, - are demand driven. Their operational strategy aims to keep a good match between the resources and changing work demand at all times. Staff scheduling, daily traffic management, seasonal events, vacations, new services, staff exchange among teams, new ways of work - all require a flexible work breakdown structure and a multi channel strategy. Work breakdown structures became multi skilled and organized in matrix. Workflows may involve different teams or even business units. All of this makes a tactical planning a challenging task as work is planned in one system and work is done in many others. 
 
@@ -75,7 +75,7 @@ For some organisations it can be beneficial to have an extra reporting strategy 
 
 In fact, such an example of practical separation of reporting data from operational data is well known to the accountants. By consolidating financial transactions into a system of accounts, an operational data becomes well defined/named, compact, consistent. Would you consider to ask an accountant to compile a quarterly financial report not from a financial system but from a data warehouse directly? Well, good luck with that! If a proper operations management can save at least just as much money as proper financial management, can operations benefit from following, at least partially, the accounting principles and reporting standards? Are not we matching work/staff similar to debit/credit? For some, it can be an opening for powerful reporting strategy changes and for some it may not be applicable, but if all the above speaks to you and makes at least some sense, please prepare to dive into more technical details. 
 
-# MAIS history
+# History
 
 MAIS means CORN in dutch. A series structure of corns is iconic for the way we suggest to model business information, using 100% generic [time series]. 
 
