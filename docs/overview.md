@@ -10,8 +10,8 @@ We propose a solution to a last mile home problem. In the context of management 
 
 A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates ** two major benefits ** for reporting applications:
 
-?>
-(Single source) 
+
+?>(Single source) 
 :A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
 (Agile)
 :Data for each time serie can be processed and stored in an independent or a batched manner. The time series can be individually managed, shared, secured or audited by the business in a step wise manner.
