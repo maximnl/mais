@@ -87,7 +87,7 @@ MAIS means CORN in dutch. A series structure of corns is iconic for the way we s
 2021 - First migration of a reporting environment from SSAS/Excel rails on PowerBI. Many improvements and bug fixes during this period. Nearly complete code rewrite. 
 2022 - Added support of Production/Acceptation environments, data synchronization, several analytical stored procedures.  
 
-# MAIS community
+# Community
 In our community we welcome reporting specialists, workforce managers, planners involved in support of business operations. MAIS code is fully SQL server compliant, we constantly extend the framework with new functionalities and public data. This gives an edge to our members for better results, growing income and client satisfaction. Our community helps to find consulting opportunities, learn skills and meet great people.  
 
 
