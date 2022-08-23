@@ -10,8 +10,7 @@ We propose a solution to a last mile home problem. In the context of management 
 
 A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates ** two major benefits ** for reporting applications:
 
-?>
-1. (Single source) A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
+?>1. (Single source) A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
 2. (Agile) Data for each time serie can be processed and stored in an independent or a batched manner. The time series can be individually managed, shared, secured or audited by the business in a step wise manner.
 
 MAIS approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users while giving an access to SQL server powerfull engine. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
@@ -25,8 +24,7 @@ While we would never attempt to design a car that serves both a transport compan
 
 Treating all the reports in a technically similar way is an attractive solution. Nevertheless, it is easy to observe that:
 
-?>
-A) Some reports are used for daily meetings and have a high load while other ad hoc reports can be used once a year or one time. 
+?>A) Some reports are used for daily meetings and have a high load while other ad hoc reports can be used once a year or one time. 
 B) Some reports carry data from a single operational source while other reports such as monthly closure reports, span many operational systems and require to bring diverse information together for critical business decisions. 
 
 Management reports can span over different sources such as FTEs, forecasts, ratios, indicators, last year performance. If we start recognizing different categories of reports, we may notice different needs for performance, integration, analytics etc. Does a warehouse surves all the reports equally well? 
