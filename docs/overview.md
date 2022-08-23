@@ -53,7 +53,9 @@ A proper resource management strategy includes resource planning and forecasting
 Capacity planning and workforce management (WFM) is data driven and highly dependent on both - the quality of operational data and the ability to plan the future work demand. Data availability largely depends on planning and reporting teams which often combine these tasks. These teams support business operations and all other business units playing an important role in capacity management. 
 
 On one hand, as a member of a planning and reporting team you may have noticed that: 
-!> combined data from all management reports is just a tiny portion of a corporate data warehouse data. 
+
+?> combined data from ***ALL*** management reports is just a tiny portion (<1%) of a corporate data warehouse data. 
+
 This disproportion happens because the management data is A) limited to few selected indicators which management is capable of to follow over time, B) data is time aggregated (seazon, month, week, day) and C) transaction details are left out. 
 
 On the other hand, reports are far from just plug and play the warehouse data. Corporate reports require private analytical/aggregation software, custom calculations, filtering, adjustments and often manual copy paste/file management steps. Partially this happens because operational data is mostly product/transaction driven. Transactions carry data details which may or may not match the business definitions and/or the breakdown structure of resources required to produce those transactions. 
