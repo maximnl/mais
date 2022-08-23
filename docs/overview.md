@@ -8,10 +8,9 @@ A time series version of a data warehouse enables an agile, audited and utra fas
 
 We propose a solution to a last mile home problem. In the context of management reporting this problem means undesired steps which complicate the process: inclusion of extra source data, data filtering, data modifications are required on the reporting side. This could lead to data heavy, decentralized, less ICT supported reporting process. 
 
-A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates ** two major benefits ** for reporting applications:
+A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
 
-
-?>
+>
 Single source
 :A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
 Agile
