@@ -6,14 +6,15 @@ A time series version of a data warehouse enables an agile, audited and utra fas
 
 ?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data definitions do not match business definitions.
 
-We propose a solution to a last mile home problem, which means additional data, data filtering, data modifications are required on the reporting side making it decentralized and less ICT supported. 
+We propose a solution to a last mile home problem. In the context of reporting this problem means additional data, data filtering, data modifications are required on the reporting side. This could lead to data heavy, decentralized, less ICT supported reporting process. 
 
-A generic time series approach features a data model with a fixed structure. Because the data structure does not change over time this creates two major benefits for reporting applications:
+A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates ** two major benefits ** for reporting applications:
 
-1. (Single source) A time serie can be defined by the name, searched and combined with any other series on one chart/table/dashboard. 
-2. (Agile) Data for each time serie can be processed in an independent or a batch manner. Series can be individually managed, shared, secured or audited.
+?>
+1. (Single source) A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
+2. (Agile) Data for each time serie can be processed and stored in an independent or a batched manner. The time series can be individually managed, shared, secured or audited by the business in a step wise manner.
 
-This approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
+MAIS approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users while giving an access to SQL server powerfull engine. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
 
 # Foreword 
 
@@ -41,7 +42,8 @@ MAIS would not be possible without a great collaboration with the business and I
 
 We could jump to a technical details of MAIS, but we would like to spend everyone's time by giving a business introduction on a reporting situation which we think benefits the most. In case it makes sense to you, please consider following our project, installing MAIS and contacting us for any questions or support. After all, the proof of pudding is in the eating.
 
-Maxim Ivashkov - developer and founder of MAIS.
+
+[Maxim Ivashkov](https://www.linkedin.com/in/ivashkov/?locale=nl_NL) - developer and founder of MAIS.
 
 
 # Planning and forecasting
