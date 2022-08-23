@@ -1,16 +1,16 @@
 Welcome to MAIS documentation. 
-MAIS is a time series framework for reporting data applications.
+MAIS is a time series data framework for business reporting applications.
 
 # Abstract
-A time series version of a data warehouse enables an agile, audited and utra fast data wallet for reporting and business self service.
+A time series version of a data warehouse enables an agile, audited and utra fast data wallet for business reporting and business self service.
 
 ?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data definitions do not match business definitions.
 
-We propose a solution to a last mile home problem, which in the context of management reporting means additional data filtering/modifications are done on the reporting side instead of centralizing and managing them in the underlying data systems. 
+We propose a solution to a last mile home problem, which means additional data, data filtering, data modifications are required on the reporting side making it decentralized and less ICT supported. 
 
-A generic time series approach relies on a data model with a fixed structure. Because the data structure is generic and does not change over time this creates two major benefits for reporting applications:
+A generic time series approach features a data model with a fixed structure. Because the data structure does not change over time this creates two major benefits for reporting applications:
 
-1. (Single source) Time serie can be searched and combined with each other on one chart/table/dashboard with no limitations. 
+1. (Single source) A time serie can be defined by the name, searched and combined with any other series on one chart/table/dashboard. 
 2. (Agile) Data for each time serie can be processed in an independent or a batch manner. Series can be individually managed, shared, secured or audited.
 
 This approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
