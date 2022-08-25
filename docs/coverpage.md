@@ -2,10 +2,9 @@
 
 # MAIS
 
-> An innovative (Azure) SQL framework to manage reporting data in an agile way.
+> An innovative (Azure) SQL framework for periodic reporting in an agile way.
 
-> Use MAIS to process data you need into a light weight time series format. 
-
+- Process data you need for periodic reporting into a light weight time series format. 
 - Make data maintanance agile, and business friendly. 
 - Integrate any user raw files or transaction tables.  
 - Build periodic reports richer , more analytical and faster.
