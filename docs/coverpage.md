@@ -2,14 +2,13 @@
 
 # MAIS
 
-> A light weight data wallet for reporting data 
+> A powerful opensource framework for management reporting data on (Azure) SQL database
+> Use MAIS to process data you need into a time series format. 
 
-
-- Time series format is easy, fast, user friendly
-- Load any user files or tables 
-- Make your reports more reach and useful
-- Multiple sites support, survice reporting for companies as a pro 
-- Benefit from forecasting algorithms and other community (time series) data
+- It makes data maintanance agile, and  business friendly 
+- Integrate any user raw files or transaction tables  
+- Make periodic reports richer and more analytical
+- Benefit from forecasting algorithms, time intelligence procedures and other community (time series) data
 
 [GitHub](https://github.com/maximnl/mais/)
 [Getting Started](overview.md)
