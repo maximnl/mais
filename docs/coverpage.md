@@ -2,13 +2,14 @@
 
 # MAIS
 
-> A powerful opensource framework for management reporting data on (Azure) SQL database
-> Use MAIS to process data you need into a time series format. 
+> An innovative (Azure) SQL framework to manage reporting data in an agile way.
 
-- It makes data maintanance agile, and  business friendly 
-- Integrate any user raw files or transaction tables  
-- Make periodic reports richer and more analytical
-- Benefit from forecasting algorithms, time intelligence procedures and other community (time series) data
+> Use MAIS to process data you need into a light weight time series format. 
+
+- Make data maintanance agile, and business friendly. 
+- Integrate any user raw files or transaction tables.  
+- Build periodic reports richer , more analytical and faster.
+- Apply out of the box forecasting algorithms, time intelligence procedures and other community (time series) data
 
 [GitHub](https://github.com/maximnl/mais/)
 [Getting Started](overview.md)
