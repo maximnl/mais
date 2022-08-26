@@ -1,4 +1,4 @@
-![logo](![image](https://user-images.githubusercontent.com/33482502/186895043-e61718ed-9d1d-4d94-ae7c-ba0790ece3f7.png))
+![image](https://user-images.githubusercontent.com/33482502/186895321-b55f3b2c-1d64-4017-b128-ce0edde15d8e.png)
 
 # MAIS
 
