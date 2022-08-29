@@ -1,4 +1,5 @@
 - [Overview](overview.md)
+- [Architecture](architecture.md)
 - [Configuration](configuration.md)
 - [Install](install.md)
 - [Guide](guide.md)
