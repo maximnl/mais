@@ -1,6 +1,10 @@
-# 
+# Import configuration
+This section describes how any source data is imported into a time series format of MAIS. 
+
 ## Parameters
-### -DELTA
+
+### Commands
+#### -DELTA
 This parameter forces begin and end date of the date range to be adjusted to the source date range. Data will be refreshed only for the range between min and max dates of the source. 
 * TIP1. If the source goes far back in history and this data is not changed, you may want to experience performance issues as more and more data will be refreshed each load. 
 * TIP2. Handy parameter to be used as the standard for the small sources
@@ -8,10 +12,10 @@ This parameter forces begin and end date of the date range to be adjusted to the
 
 From may 2022 -DELTA is default, you do not have to include it. In case you need hard overload of data use -NODELTA
 
-### -NODELTA
+#### -NODELTA
 This parameter will turn of min and max dates detection from the source. all data within date_from  and date_until specified via a procedure and or an import, will be deleted and inserted. if your source has a shorter date range, more records will be deleted than inserted. 
 
-### -SUMFIELDS
+#### -SUMFIELDS
 This parameter will force following:
 * add SUM function to every source column 
 *  force group by clause (cancel -NOGROUPBY if it was used) 
@@ -35,5 +39,5 @@ AFTER the command:
  WHERE (source='BFC/KRIMP/ZABI') AND date BETWEEN '2022-01-03' AND '2023-01-01' GROUP BY date;
 
 
-### -PRINT 
+#### -PRINT 
 Allows output of the generated queries as a text message in Management Studio for debug purposes. The queries are not executed.
