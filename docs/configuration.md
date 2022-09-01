@@ -1,5 +1,6 @@
 # Import configuration
-This section describes how any source data is imported into a time series format of MAIS. 
+Import configuration is a generic structure that controls data import from a source to a time serie format in MAIS. The structure is made generic to allow a variety of sources to be managed at different levels and minimise time spent and the maintanance. 
+
 
 ## Parameters
 
