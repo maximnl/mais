@@ -1,7 +1,12 @@
 Welcome to MAIS documentation. 
 # Abstract
-MAIS is a time series data framework for reporting, planning and management applications. It is a production ready (Azure/SQL Server) data scheme with algorithmes which is oriented towards intensive/periodic data processing. It helps to replace or reinforce the existing ETL processes such that: 
-- involve frequent data/definitions changes, 
+MAIS is a time series data framework written in T-SQL for reporting, planning and operations management applications. A game changer for a manager, report team and ICT in ways how we combine, share, store and process reporting data.  
+- Manager cannot build new reports from a data warehouse. Too complex. Now they CAN. 
+- Report builders cannot influence ETL process, it is behind the walls. Now they CAN. 
+- ETL staff needs to focus on performance and quality of data. Now they CAN. 
+
+MAIS shines in periodic reporting context helps to replace or reinforce the existing ETL processes such that: 
+- involve data/definitions/systems changes, 
 - depend on specific business configuration/parameters or calculations, 
 - require a different from a datawarehouse update cycle, 
 - require legacy, data freeze, long history of data, versions of data, 
