@@ -1,19 +1,25 @@
 Welcome to MAIS documentation. 
-MAIS is a time series data framework for business reporting applications.
-
 # Abstract
-A time series version of a data warehouse enables an agile, audited and utra fast data wallet for business reporting and business self service.
+MAIS is a time series data framework for reporting, planning and management applications. It is a production ready (Azure/SQL Server) data scheme with algorithmes which is oriented towards intensive/periodic data processing. It helps to replace or reinforce the existing ETL processes such that: 
+- involve frequent data/definitions changes, 
+- depend on specific business configuration/parameters or calculations, 
+- require a different from a datawarehouse update cycle, 
+- require legacy, data freeze, long history of data, versions of data, 
+- invlove integration of keyless data and user files. 
 
-?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data definitions do not match business definitions.
+?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data is added or modified within the reports hindering a direct access to this data.  
 
-We propose a solution to a last mile home problem. In the context of management reporting this problem means undesired steps which complicate the process: inclusion of extra source data, data filtering, data modifications are required on the reporting side. This could lead to data heavy, decentralized, less ICT supported reporting process. 
+We propose an effective and centralized solution for 
 
-A generic time series approach features a data model with a light fixed structure. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
+A) easy fast direct data access to reporting data by well defined names or stored filters
+B) ETL self service for the business to manage this data. 
+
+MAIS approach is based on time series data model with a fixed structure. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
 
 Single source
-:A time serie can be defined by a name, be searched and be combined with any other series on a signle chart/table/dashboard. 
+:A time series can be defined/accessed as in a catalog thus selected by a single name, be searched and be combined with any other series on a signle chart/table/dashboard. 
 Agile
-:Data for each time serie can be processed and stored in an independent or a batched manner. The time series can be individually managed, shared, secured or audited by the business in a step wise manner.
+:Data for each time serie can be processed and stored in an independent or in a batched manner. The time series can be individually managed, documented, shared, secured or audited by the business in an agile (a step wise) manner.
 
 MAIS approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users while giving an access to SQL server powerfull engine. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
 
