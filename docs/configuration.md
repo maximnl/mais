@@ -1,6 +1,10 @@
 # Import configuration
-Import configuration is a generic structure that controls data import from a source to a time serie format in MAIS. The structure is made generic to allow a variety of sources to be managed at different levels and minimise time spent and the maintanance. 
+Import configuration is a generic structure that controls data import from a source to a time serie format in MAIS. The structure has two layers made of transitory parameters to support import of data from any table/view source:
+- Procedure level - sets parameters at the source level. Do not confuse it with the SQL stored procedures. The same SQL stored procedure can be used in multiple import procedures. 
+- Import level - refiness parameters of the above procedure for a specific time serie.
+Parameters such as [source], [filter] from the import are merged with the parameters from the procedure level such that only a few parameters per time serie need to be modified. The procedure level specifies with SQL stored procedure will be called and passed the parameters. The stored procedure share the same parameters. 
 
+All parameters can be written in sql expressions syntax. 
 
 ## Parameters
 
