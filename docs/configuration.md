@@ -6,6 +6,52 @@ Parameters such as [source], [filter] from the import are merged with the parame
 
 All parameters can be written in sql expressions syntax. 
 
+Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS stored procedures directly from data. 
+'''SQL
+--  configuration
+    DECLARE @sqlCommand NVARCHAR(MAX) =''-- 
+
+--  source data parameters
+	DECLARE @filter nvarchar(4000)=''           -- where filter for filtering source data
+	DECLARE @date_import_from date='9999-01-01' -- calculated by the import query using imports and procedures fields
+	DECLARE @date_import_until date='1900-01-01'
+	DECLARE @fields_source varchar(2000)=''     -- source fields
+	DECLARE @fields_target varchar(2000)=''     -- target fields value1
+	DECLARE @schedule varchar(2000)=''
+	DECLARE @source varchar(2000)=''
+	DECLARE @group_by varchar(2000)=''
+
+-- target parameters
+    DECLARE @fact_day nvarchar(200) ='[A_FACT_DAY]' -- data per day stored here
+    DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]' -- data per day/interval_id is stored here. conform a_time_interval dimension
+    
+    -- parameters
+	DECLARE @p1 varchar(2000)=''                
+	DECLARE @p2 varchar(2000)=''
+	DECLARE @p3 varchar(2000)=''
+	DECLARE @p4 varchar(2000)=''
+	DECLARE @p5 varchar(2000)=''
+	DECLARE @groupby varchar(2000)=''
+
+	-- log parameters
+	DECLARE @data  varchar(4000)=''  -- log data
+	DECLARE @rows INT   -- keep affected rows
+	DECLARE @start_time datetime=null
+    DECLARE @output nvarchar(max)='';
+
+	-- source data analysis
+	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
+	DECLARE @date_source_max date='1900-01-01'
+    DECLARE @day_source varchar(max)=''
+
+	-- intraday parameters
+	DECLARE @intraday_join varchar(2000)=''
+	DECLARE @intraday_interval_id varchar(200)='interval_id'
+	DECLARE @intraday_duration varchar(5)='15' -- default intraday interval duration in min
+    DECLARE @intraday_source varchar(max)=''
+    '''
+    
+
 ## Parameters
 
 ### Commands
