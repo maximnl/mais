@@ -35,13 +35,12 @@ Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS
 	DECLARE @fact_day nvarchar(200) ='[A_FACT_DAY]' -- data per day stored here
 	DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]' -- data per day/interval_id is stored here. conform a_time_interval dimension
 
--- parameters
+-- free to use parameters
 	DECLARE @p1 varchar(2000)=''                
 	DECLARE @p2 varchar(2000)=''
 	DECLARE @p3 varchar(2000)=''
 	DECLARE @p4 varchar(2000)=''
 	DECLARE @p5 varchar(2000)=''
-	DECLARE @groupby varchar(2000)=''
 	
 ```
     
