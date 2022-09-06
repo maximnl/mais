@@ -7,7 +7,7 @@ Parameters such as [source], [filter] from the import are merged with the parame
 All parameters can be written in sql expressions syntax. 
 
 Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS stored procedures directly from data. 
-'''SQL
+```sql
 --  configuration
     DECLARE @sqlCommand NVARCHAR(MAX) =''-- 
 
@@ -49,7 +49,7 @@ Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS
 	DECLARE @intraday_interval_id varchar(200)='interval_id'
 	DECLARE @intraday_duration varchar(5)='15' -- default intraday interval duration in min
     DECLARE @intraday_source varchar(max)=''
-    '''
+```
     
 
 ## Parameters
