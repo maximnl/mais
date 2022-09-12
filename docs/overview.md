@@ -65,6 +65,7 @@ We could jump to a technical details of MAIS, but we would like to spend everyon
 
 
 [Maxim Ivashkov](https://www.linkedin.com/in/ivashkov/?locale=nl_NL) - developer and founder of MAIS.
+![image](https://user-images.githubusercontent.com/33482502/189649207-d2c9d480-8611-4524-8736-9295edda1b0c.png)
 
 
 # Planning and forecasting
