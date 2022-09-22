@@ -1,32 +1,29 @@
 Welcome to MAIS documentation. 
-# Abstract
-MAIS is a time series data framework written in T-SQL for reporting, planning and operations management applications. A game changer for a manager, report team and ICT in ways how we combine, share, store and process reporting data.  
-- Manager cannot build new reports from a data warehouse. Too complex. Now they CAN. 
-- Report builders cannot influence ETL process, it is behind the walls. Now they CAN. 
-- ETL staff needs to focus on performance and quality of data. Now they CAN. 
+# Motivation
+Any business operations today relies on periodic reports for the dayly or strategic decisions. Reporting process is analytically complex processs that invloves many adhoc steps. MAIS is a time series data framework written in T-SQL aiming to simplify, enrich, speed up and support periodic legacy reports through out their life cycle. 
 
-MAIS shines in periodic reporting context helps to replace or reinforce the existing ETL processes such that: 
-- involve data/definitions/systems changes, 
-- depend on specific business configuration/parameters or calculations, 
-- require a different from a datawarehouse update cycle, 
-- require legacy, data freeze, long history of data, versions of data, 
+Periodic reporting/dashboarding context as opposed to detailed/ad hoc analytical reports,  differs in a number of ways: 
+- involves cross references such as targets/budget/forecast or last year data, 
+- enrichtes and combines factual information from different systems with ratios, FTE, capacity, 
+- requires legacy, a continious history of data, or versions of data, 
 - invlove integration of keyless data and user files. 
+
+To address these issues there are two major approaches: a datawarehousee and data modeling within the reports.
 
 ?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data is added or modified within the reports hindering a direct access to this data.  
 
-We propose an effective and centralized solution for 
+While data warehouses is a well established and centralized approach, in practice it is less agile and expensive. In many situations a reporting team will compensate for the missing information by building own data models in Power BI or other reporting tools. While such island data solutions are agile and fast to build, they may islolate data from other processes and reduce stability and complience. 
 
-A) easy fast direct data access to reporting data by well defined names or stored filters
-B) ETL self service for the business to manage this data. 
+# MAIS: a time series data warehouse
 
-MAIS approach is based on time series data model with a fixed structure. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
+MAIS approach is based on time series data model. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
 
 Single source
-:A time series can be defined/accessed as in a catalog thus selected by a single name, be searched and be combined with any other series on a signle chart/table/dashboard. 
+:Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational combinations of series on signle charts/tables/dashboards. 
 Agile
-:Data for each time serie can be processed and stored in an independent or in a batched manner. The time series can be individually managed, documented, shared, secured or audited by the business in an agile (a step wise) manner.
+:Data for the time series can be documented, reviewed and processed in an independent manner. The time series can be individually managed, documented, shared, secured or audited by the business in an agile (a step wise) manner.
 
-MAIS approach does require a source data to be processed in the time series format. Within MAIS this is achieved by a generic stored procedures controlled by generic parameters. The parameters use popular SQL expressions syntax shielding SQL complexity from the business users while giving an access to SQL server powerfull engine. This suport many daily scenarios and routine reporting tasks. In most of cases business work configuration changes do not require structural data changes but require changes of how transactions are aggregated controlled by the parameters. Business users can apply low risk but frequent changes themselves, while ICT staff is released for more complex and risky structural data changes or delivering new sources of data. Data sources do not require mutual data keys or details consistency. This lowers overall complexity separating the concerns between the reporting teams and ICT.  
+MAIS is a practical data strategy to reduce the overal complexity of the reporting process. A reporting team can centralize and manage frequent configuration like changes by themselves. ICT enables centralized intagration of less structured user data and data with challenging integration  requirements. The business operations can centralize essential management data in a legal storage with a transparant and user friendly access to it.  
 
 # Foreword 
 
