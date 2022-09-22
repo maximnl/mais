@@ -2,12 +2,12 @@
 
 # MAIS
 
-> An innovative (Azure) SQL framework for periodic reporting in an agile way.
+> A time series SQL framework for data/files import, documentation and reporting in a much easier and an agile way.
 
-- Process data you need for periodic reporting into a light weight time series format. 
-- Make data maintanance agile, and business friendly. 
-- Integrate any user raw files or transaction tables.  
-- Build periodic reports richer , more analytical and faster.
+- Import data from tables or files into a rigit format of time series, 
+- Bring documentation and data together, 
+- Involve reporting specialist in ETL process risk free,  
+- Pull/find information in a catalogous like way with no aditional filtering or data modeling required,
 - Apply out of the box forecasting algorithms, time intelligence procedures and other community (time series) data
 
 [GitHub](https://github.com/maximnl/mais/)
