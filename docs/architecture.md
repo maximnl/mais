@@ -6,6 +6,7 @@ MAIS Architecture
 - Load row files (CSV, TXT, XLS) user files and convert them into time series 
 - Analytics - run available forecast algorithms or time intelligence procedures
 - Compact data storage with versioning, production/test 
+- Legacy data exchange with partners, applications
 - Streaming for ultra speed performance with no additional data models
 - Data libraries of plug and play open data - weather, events  
 
