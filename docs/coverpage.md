@@ -2,13 +2,12 @@
 
 # MAIS
 
-> A time series SQL framework for data/files import, documentation and reporting in a much easier and an agile way.
+> A time series SQL framework for reports/dashboards data as a product: stable, fast, agile.  
 
-- Import data from tables or files into a rigit format of time series, 
-- Bring documentation and data together, 
-- Involve reporting specialist in ETL process risk free,  
-- Pull/find information in a catalogous like way with no aditional filtering or data modeling required,
-- Apply out of the box forecasting algorithms, time intelligence procedures and other community (time series) data
+- Import data from tables or row files into a stable format of time series, 
+- Bring documentation, metadata and data together, 
+- Involve reporting specialist in ETL processes,  
+- Out of the box forecasting algorithms, time intelligence procedures
 
 [GitHub](https://github.com/maximnl/mais/)
 [Getting Started](overview.md)
