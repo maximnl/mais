@@ -1,4 +1,7 @@
 Welcome to MAIS documentation. 
+
+MAIS is a SQL framework for self service ETL integrated with a data storage optimized for corportate consolidation/reporting data needs.  
+
 # Motivation
 Business operations management relies on periodic reports/dashboards for performance management, evaluations, meetings/decision support purposes. Such high aggregation level reports pull data from a centralized datawarehouse(s). 
 
@@ -10,13 +13,9 @@ Business operations management relies on periodic reports/dashboards for perform
 - requires legacy, a continious long history of data, versioning of data, 
 - involves integration of keyless data , custom raw files. 
 
-Fully centralized approaches may overshoot the target by trying to integrate different business domains defintions which may contradict each other and differ from the data context. This may lead to various bottlenecks such as IT infrustructure occupancy, ICT staff availability, waiting time and costs. A faster and a more decentralized alternative could be pulling some data directly from data hubs or independent data sources. However, such bold decentralized shortcuts become disrupted on a longer run by source data changes, staff rotations, many copies of the same logica and data filters. Many practioners advice on decentralized approaches which are designed as a data product - stable, read optimized, reach on metadata, business domain specific. 
+Fully centralized approaches may overshoot the target by trying to integrate different business domains defintions which may contradict each other and differ from the data context. This may lead to various bottlenecks such as additional data modeling needs, IT infrustructure occupancy, ICT staff availability, waiting time and costs. A faster and a more decentralized alternative could be pulling some data directly from data hubs or independent data sources. However, such bold decentralized shortcuts become disrupted on a longer run by source data changes, staff rotations, many copies of the same logica and data filters. While the probability of the disruptions may seem low, the consequences may influence a large amount of reporting users or requiquire a complete rebuild and thus carry significant risks.   
 
-# MAIS: a time series data product
-
-MAIS is a SQL framework for self service ETL and data storage which is optimized for corportate consolidation/reporting data needs.  
-
-MAIS **major benefits** for reporting applications:
+# MAIS **major benefits** for reporting applications:
 
 Single agile data source
 :Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational operations with well defined series on charts/tables/dashboards. 
