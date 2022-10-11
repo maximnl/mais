@@ -1,32 +1,36 @@
 Welcome to MAIS documentation. 
 # Motivation
-Business operations/finance rely on periodic reports for evaluations and meetings/decision support purposes. Such high level reports invlove centralized datawarehouses. 
+Business operations management relies on periodic reports/dashboards for performance management, evaluations, meetings/decision support purposes. Such high aggregation level reports pull data from a centralized datawarehouse(s). 
 
-?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required.  
+?>Data warehouses provide a powerful centralized solution for data reporting, but the main benefits are lost if additional data or transformations are required.  
 
-Periodic reports/dashboards context as opposed to detailed/ad hoc analytical reports,  differs in a number of ways: 
-- involves cross references such as targets/budget/forecast or last year data, 
-- enrichtes and combines factual information from different systems with ratios, FTE, capacity, 
-- requires legacy, a continious history of data, versions of data, 
-- invlove integration of keyless data and even custom user files. 
+**Periodic reports/dashboards context** as opposed to detailed/ad hoc analytical reports, differs in a number of ways: 
+- involves business data such as targets/budget/forecast, 
+- enriches and combines factual information with various ratios, YTD calculations,
+- requires legacy, a continious long history of data, versioning of data, 
+- involves integration of keyless data , custom raw files. 
 
-A fully centralizeed approach may lead to various bottlenecks as in IT infrustructure, management or ICT staff availability. A decentralized alternative is to pull data directly from data hubs or independent data sources. However, such bold decentralized approach is easily disrupted by source data changes, issues with data integration. 
+Fully centralized approaches may overshoot the target by trying to integrate different business domains defintions which may contradict each other and differ from the data context. This may lead to various bottlenecks such as IT infrustructure occupancy, ICT staff availability, waiting time and costs. A faster and a more decentralized alternative could be pulling some data directly from data hubs or independent data sources. However, such bold decentralized shortcuts become disrupted on a longer run by source data changes, staff rotations, many copies of the same logica and data filters. Many practioners advice on decentralized approaches which are designed as a data product - stable, ready to use, reach on metadata, business domain specific. 
 
 # MAIS: a time series data product
 
-MAIS approach is based on time series data as a product model. Data as a product approaches such as data warehouse or data valts, are data solutions designed for a specific data consumers/context which are isolated from the source and which are stable, rich with metadata and enable an easy access to data. Time series format is a natural form for periodic reportinng beacause it often combines time periods, actuals and forecasting. 
+MAIS is a SQL framework for corporate periodic reporting which is designed as a data product but made domain independent for corportate data consolidation/reporting pusposes. A rigid time series data format is chosen as a natural format to meet the reporting context.  
 
-MAIS*** major benefits *** for reporting applications:
+MAIS **major benefits** for reporting applications:
 
-Single source
-:Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational combinations of series on signle charts/tables/dashboards. 
+Single agile data source
+:Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational operations with well defined series on charts/tables/dashboards. 
 Agile
-:Data for the time series can be documented, reviewed and processed in an independent/parallel manner. The time series can be managed, documented, shared, secured or audited by the business in an agile (a step wise) and fully decentralized manner.
+:Time series data can be documented, reviewed, versioned and processed in independent/parallel and agile (stepwise) manners. 
 
-MAIS is a practical data strategy to reduce the overal complexity and centralization of the reporting process and support decentralized approaches with metadata and out of the box features in a data as a product manner. 
-* A reporting team centralizes and manages metadata for aggregations, ETL configuration and business/reporting items names changes. 
-* ICT team enables centralized and **continious** integration of less structured (user) data or data with challenging integration requirements. The business operations can centralize essential management data in a legal storage with a transparant and user friendly access to it. 
-* Business analysts gain an audited and fast read from a light data storage with data modelingless access to aggreagated data which spans critical reporting items with forecasts, many years of actuals history  
+# Use cases
+MAIS is a practical data decentralization strategy to reduce the overal complexity and dependency of corporate reporting on a single team/platform or tool. It is a game changer for the boundaries of many teams:
+* A reporting team centralizes and manages metadata for series names, metadata and data aggregations. The last ones are ETL configurations which influcence time series ETL directly. 
+* ICT data team enables centralized and **continious** and self service integration of less structured (user) data or data with challenging integration requirements. 
+* The business operations gain an audited, versioned, fast and user friendly access to all reporting data. 
+* Business analysts gain a fast access to a light historical data storage from PowerBI, Excel or any reporting tool without data modeling 
+* Forecasters instantly share forecasts and actuals they are based on 
+* Buscritical reporting items with forecasts, many years of actuals history  
 
 # Foreword 
 
