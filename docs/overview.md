@@ -1,29 +1,32 @@
 Welcome to MAIS documentation. 
 # Motivation
-Any business operations today relies on periodic reports for the dayly or strategic decisions. Reporting process is analytically complex processs that invloves many adhoc steps. MAIS is a time series data framework written in T-SQL aiming to simplify, enrich, speed up and support periodic legacy reports through out their life cycle. 
+Business operations/finance rely on periodic reports for evaluations and meetings/decision support purposes. Such high level reports invlove centralized datawarehouses. 
 
-Periodic reporting/dashboarding context as opposed to detailed/ad hoc analytical reports,  differs in a number of ways: 
+?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required.  
+
+Periodic reports/dashboards context as opposed to detailed/ad hoc analytical reports,  differs in a number of ways: 
 - involves cross references such as targets/budget/forecast or last year data, 
 - enrichtes and combines factual information from different systems with ratios, FTE, capacity, 
-- requires legacy, a continious history of data, or versions of data, 
-- invlove integration of keyless data and user files. 
+- requires legacy, a continious history of data, versions of data, 
+- invlove integration of keyless data and even custom user files. 
 
-To address these issues there are two major approaches: a datawarehousee and data modeling within the reports.
+A fully centralizeed approach may lead to various bottlenecks as in IT infrustructure, management or ICT staff availability. A decentralized alternative is to pull data directly from data hubs or independent data sources. However, such bold decentralized approach is easily disrupted by source data changes, issues with data integration. 
 
-?>Data warehouses provide a powerful centralized solution for reporting, but the main benefits are lost if additional data is required or data is added or modified within the reports hindering a direct access to this data.  
+# MAIS: a time series data product
 
-While data warehouses is a well established and centralized approach, in practice it is less agile and expensive. In many situations a reporting team will compensate for the missing information by building own data models in Power BI or other reporting tools. While such island data solutions are agile and fast to build, they may islolate data from other processes and reduce stability and complience. 
+MAIS approach is based on time series data as a product model. Data as a product is a decentralized architecture which is stable, rich with metadata and enables an easy access to data. Time series format is a natural form for periodic reportinng beacause it often combines time periods, actuals and forecasting. 
 
-# MAIS: a time series data warehouse
-
-MAIS approach is based on time series data model. Because the data structure does not change over time this creates *** two major benefits *** for reporting applications:
+MAIS*** major benefits *** for reporting applications:
 
 Single source
 :Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational combinations of series on signle charts/tables/dashboards. 
 Agile
-:Data for the time series can be documented, reviewed and processed in an independent manner. The time series can be individually managed, documented, shared, secured or audited by the business in an agile (a step wise) manner.
+:Data for the time series can be documented, reviewed and processed in an independent/parallel manner. The time series can be managed, documented, shared, secured or audited by the business in an agile (a step wise) and fully decentralized manner.
 
-MAIS is a practical data strategy to reduce the overal complexity of the reporting process. A reporting team can centralize and manage frequent configuration like changes by themselves. ICT enables centralized intagration of less structured user data and data with challenging integration  requirements. The business operations can centralize essential management data in a legal storage with a transparant and user friendly access to it.  
+MAIS is a practical data strategy to reduce the overal complexity and centralization of the reporting process and support decentralized approaches with metadata and out of the box features in a data as a product manner. 
+* A reporting team centralizes and manages metadata for aggregations, ETL configuration and business/reporting items names changes. 
+* ICT team enables centralized and **continious** integration of less structured (user) data or data with challenging integration requirements. The business operations can centralize essential management data in a legal storage with a transparant and user friendly access to it. 
+* Business analysts gain an audited and fast read from a light data storage with data modelingless access to aggreagated data which spans critical reporting items with forecasts, many years of actuals history  
 
 # Foreword 
 
