@@ -14,7 +14,7 @@ A fully centralizeed approach may lead to various bottlenecks as in IT infrustru
 
 # MAIS: a time series data product
 
-MAIS approach is based on time series data as a product model. Data as a product is a decentralized architecture which is stable, rich with metadata and enables an easy access to data. Time series format is a natural form for periodic reportinng beacause it often combines time periods, actuals and forecasting. 
+MAIS approach is based on time series data as a product model. Data as a product approaches such as data warehouse or data valts, are data solutions designed for a specific data consumers/context which are isolated from the source and which are stable, rich with metadata and enable an easy access to data. Time series format is a natural form for periodic reportinng beacause it often combines time periods, actuals and forecasting. 
 
 MAIS*** major benefits *** for reporting applications:
 
