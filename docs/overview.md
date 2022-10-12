@@ -1,10 +1,9 @@
 Welcome to MAIS documentation. 
 
 MAIS is an open source SQL framework for self service ETL integrated with a time series data storage which is optimized for corportate reporting data needs.  
-![image](https://user-images.githubusercontent.com/33482502/195337782-80abfe85-54ed-45a0-93fe-e2dcb2ed868e.png)
-
 
 # Motivation
+
 Business operations management relies on periodic reports/dashboards for performance management, evaluations, meetings/decision support purposes. Such high aggregation level reports pull data from a centralized datawarehouse(s). 
 
 ?>Data warehouses provide a powerful centralized solution for data reporting, but the main benefits are lost if additional data or transformations are required.  
@@ -17,14 +16,8 @@ Business operations management relies on periodic reports/dashboards for perform
 
 Fully centralized approaches may overshoot the target by trying to integrate different business domains defintions which may contradict each other and differ from the data context. This may lead to various bottlenecks such as additional data modeling needs, IT infrustructure occupancy, ICT staff availability, waiting time and costs. A faster and a more decentralized alternative could be pulling some data directly from data hubs or independent data sources. However, such bold decentralized shortcuts become disrupted on a longer run by source data changes, staff rotations, many copies of the same logica and data filters. While the probability of the disruptions may seem low, the consequences may influence a large amount of reporting users, violate legal requirements, or require a complete rebuild and thus carry significant continuity and data quality risks.   
 
-# MAIS **major benefits** for reporting applications:
-
-Single agile data source
-:Alignes data, processing and documenation together. A time serie or a set of series can be accessed by unique business names. This enables search, documentation or any computational operations with well defined series on charts/tables/dashboards. 
-Agile
-:Time series data can be documented, reviewed, versioned and processed in independent/parallel and agile (stepwise) manners. 
-
 # Use cases
+
 MAIS is a practical data decentralization strategy to reduce the overal complexity and dependency of corporate reporting on a single team/platform or tool. It is a game changer for the boundaries of many teams:
 * A reporting team centralizes and manages metadata for series names, metadata and data aggregations. The last ones are ETL configurations which influcence time series ETL directly. 
 * ICT data team enables centralized and **continious** and self service integration of less structured (user) data or data with challenging integration requirements. 
@@ -35,20 +28,18 @@ MAIS is a practical data decentralization strategy to reduce the overal complexi
 
 # Foreword 
 
-A data management strategy for management reports seems to be a straightforward path: we develop a data warehouse and we use it to feed data to all the reports. In practice, this turn out to be a far more complex process which can be full of incidents and frustrations over the long run: change management, data consistency, changing business requirements can increasingly consume a great portion of your staff. 
+A data strategy for the management reports seems to be a straightforward path: we develop a data warehouse and we use it to feed data. In practice however, this turn out to be a more complex process on a long run: change management, data consistency, changing business requirements can increasingly consume a great portion of your staff. 
 
-?>While we would never attempt to design a car that serves both a transport company and a celebrity, yet we aim to enable reports with a single strategy. 
+?>While we would never attempt to design a car that serves both a transport company and a celebrity, yet we chaise data for corporate reporting with a single strategy. 
 
-Treating all the reports in a technically similar way is an attractive solution. Nevertheless, it is easy to observe that:
+Treating all reports in a similar way is an attractive solution. Nevertheless, it is easy to observe that:
 
 ?>A) Some reports are used for daily meetings and have a high load while other ad hoc reports can be used once a year or one time. 
-B) Some reports carry data from a single operational source while other reports such as monthly closure reports, span many operational systems and require to bring diverse information together for critical business decisions. 
+B) Some reports carry data from a single operational source while other reports such as monthly closure reports, span many operational systems and require to bring diverse information together for critical business decisions. Management reports tend to combine in one table/chart time aggregated data from different sources such as work itemes, FTEs, forecasts, indicators, last year actuals and all kind of ratios. For such tight integration it is essential that **all** data per a report part to be pulled from the same **a single** data source. In many analitical scenarios it is beneficial to have all reports items to be individually accesible as data in order to share them, apply calculations, combine, audit and optimize reads. 
 
-Management reports can span over different sources such as FTEs, forecasts, ratios, indicators, last year performance. If we start recognizing different categories of reports, we may notice different needs for performance, integration, analytics etc. Does a warehouse surves all the reports equally well? 
+The major motivation for starting MAIS open source project was an implementation of a forecasting approach to corporate reporting. By gathering user feedback from forecasters and business users we assessed its practical business values in a broader reporting context. Instead of bringing the actual data to the forecast suitable format (time series) and then back to reports, we attempted to reproduce all management information using time series. This required an automation as data for hundreds of time series had to be managed, which is essentially what MAIS does for you.
 
-Data warehouse strategy is a time proven approach. It is challenging to reconsider strong and weak sides of this information strategy in the modern reporting context. Last years trends such as digitalization, multi skilled planning, working from home, data driven daily meetings, working agile, cloud adoption, adoption of analytics, scarcity of ICT staff and more, may challenge any organization. One way is to continue add hardware and human resources, while another way is to diversify information strategies and reporting strategies in particular. Changing reporting tools is a part of the strategy. It may just shift the bottlenecks from the data warehouse to reporting data models. 
-
-The major motivation for starting MAIS open source project was a successful practical implementation of a forecasting approach to corporate reporting. By gathering user feedback from forecasters and business users we assessed its practical business values in a broader reporting context. Instead of bringing the actual data to the forecast suitable format (time series) and then back to reports, we attempted to reproduce all management information using time series. This required an automation as data for hundreds of time series had to be managed, which is essentially what MAIS does for you.
+## History
 
 During 7 years of continuous development and evaluation, we found MAIS approach brings other than forecasting needs practical values: 
 
@@ -60,9 +51,7 @@ During 7 years of continuous development and evaluation, we found MAIS approach 
 * we could increase frequencies of data updates and diversify data flows. When it was necessary, time series data could easily be exchanged via Azure SQL database and consumed by PowerBI or Excel directly and at a high performance,
 * Eventually we migrated MAIS based and rather complex reporting environment from SSAS/EXCEL rails to PowerBI and Azure SQL database in less than 2 month. 
 
-All of this would not be so special if we did not hear stories about data management projects/migrations running out of time and budget. Even when completed and having the users with an access and excessively available reporting tools, having well written data warehouse documentation, having highly skilled reporting team -  there was no adoption guarantee. If some essential information became missing over time, or numbers did not add - it was overall hard to search in a complex environment. 
-
-Before MAIS, essential business information was not available out of the box but required filtering because products/workflows did not match exactly the way the operations were planned and executed. Reporting software required data to be from the same source in order to be presented on one chart/table. We could not easily match what we wanted with the reporting functionalities despite excessive knowledge. When filtering was done in one report, it had to be repeated in another. When calculations over one measure were developed, the same calculations had to be repeated over another measure. While making a single source report was not an issue, combining and keeping consistent reporting elements across multiple reports was challenging. Much time was spend on analysing and finding the differences. There seemed to be a better way.  
+Before MAIS, essential business information was not available out of the box but required filtering. The data context of products/workflows transactions did not match well the operational context - how the work was planned and executed. Reporting software required data to be from the same source in order to be presented on one chart/table. We could not easily match what we wanted with the reporting functionalities despite excessive knowledge. When filtering was done in one report, it had to be repeated in another. When calculations over one measure were developed, the same calculations had to be repeated over another measure. While making a single source report was not an issue, combining and keeping consistent reporting elements across multiple reports was challenging. Much time was spend on analysing and finding the differences. There seemed to be a better way.  
 
 MAIS would not be possible without a great collaboration with the business and ICT. A unique situation of developing at the business for the business gave incredible insights. We are thankful to all business users involved for their patience, feedback and positive energy. We think many reporting teams may benefit from our experience and a generic, scalable approach. MAIS makes the life of planners, forecasters, reporting teams members and operational managers so much easier. We will continue spending a great portion of efforts on further development and support of new MAIS community members. New modules, useful data and fixes will serve all the members, making them more successful and making their reports more rich, analytical, beautiful.    
 
