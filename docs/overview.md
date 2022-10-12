@@ -1,6 +1,8 @@
 Welcome to MAIS documentation. 
 
-MAIS is a SQL framework for self service ETL integrated with a data storage optimized for corportate consolidation/reporting data needs.  
+MAIS is an open source SQL framework for self service ETL integrated with a time series data storage which is optimized for corportate reporting data needs.  
+![image](https://user-images.githubusercontent.com/33482502/195337782-80abfe85-54ed-45a0-93fe-e2dcb2ed868e.png)
+
 
 # Motivation
 Business operations management relies on periodic reports/dashboards for performance management, evaluations, meetings/decision support purposes. Such high aggregation level reports pull data from a centralized datawarehouse(s). 
