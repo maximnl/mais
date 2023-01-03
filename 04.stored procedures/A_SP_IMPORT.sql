@@ -6,7 +6,7 @@ GO
 -- next update
 -- change order of where parameters to used indexes. put activity_id and forecast_id in front
 
-CREATE OR ALTER   PROCEDURE [DBO].[A_SP_IMPORT]
+ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
 -- Parameters defined at interface/ SP level / to select and batch run several imports after each other
  @activity_id int = 0 -- run imports for an activity_id
 ,@forecast_id int = 0 -- run imports for a forecast_id
@@ -88,17 +88,17 @@ BEGIN
 	  ,concat(@commands,' ',commands)
 	  ,[procedure_name]
 	  ,site_id
-    FROM   MAIS_ANWB_P.[A_IMPORT_RUN]
+    FROM   dbo.[A_IMPORT_RUN]
     WHERE   (import_id=@import_id or @import_id=0) 
     AND procedure_code= 'A_SP_IMPORT' -- This SP only 
     AND (site_id=@site_id or @site_id=0)  
-    AND ([procedure_id] = try_convert(int,@procedure_name) or [procedure_name] like @procedure_name or [procedure_name] ='') 
+    AND ([procedure_id] = try_convert(int,@procedure_name) or [procedure_name] like @procedure_name or @procedure_name = '') 
     AND (activity_id=@activity_id or @activity_id=0)
     AND (forecast_id=@forecast_id or @forecast_id=0)
     AND ([category] like @category or @category='')
     ORDER BY [sort_order],[procedure_name];
     
-	EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  , @procedure_name , null , @commands, @site_id;
+	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  , @procedure_name , null , @commands, @site_id;
 	SET @start_time     = GETDATE();
 
 ----------------------------------------------
@@ -173,10 +173,10 @@ BEGIN
             END TRY
      		BEGIN CATCH  
                 SET @errors=@errors+1;
-                SET @data=MAIS_ANWB_P.[A_FN_SYS_ErrorJson]();
+                SET @data=dbo.[A_FN_SYS_ErrorJson]();
                 SET @output=@output+@data+'<br><br>';
                 PRINT @output
-                EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'ERROR DELTA DETECTION' ,@session_id ,@procedure_name, @import_id , @data, @site_id;
+                EXEC dbo.[A_SP_SYS_LOG] 'ERROR DELTA DETECTION' ,@session_id ,@procedure_name, @import_id , @data, @site_id;
      		END CATCH;   
 
             IF @date_import_from<@date_source_min BEGIN SET @date_import_from=@date_source_min; END
@@ -200,7 +200,7 @@ BEGIN
         set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target);
 
 		--@category --@session_id --@object_id --@step_id -- data
-        EXEC MAIS_ANWB_P.[A_SP_SYS_LOG]  'IMPORT EXECUTE' , @session_id ,@procedure_name , @import_id , @data , @site_id ;  
+        EXEC dbo.[A_SP_SYS_LOG]  'IMPORT EXECUTE' , @session_id ,@procedure_name , @import_id , @data , @site_id ;  
 
         -- test parameters before running all
         IF @activity_id=0 OR @forecast_id=0 SET @errors=@errors+1 ;
@@ -208,7 +208,7 @@ BEGIN
             SET @errors=@errors+1; 
             SET @output=@output+'-- <b>Warning: Source dates cannot be found. Queries will not be executed. 
             Please check if source exists and/or the dates parameters.</b><br>';   
-            EXEC MAIS_ANWB_P.[A_SP_SYS_LOG]  'WARNING - NO DATA' ,@session_id ,@procedure_name , @import_id , @sqlCommand , @site_id ;  
+            EXEC dbo.[A_SP_SYS_LOG]  'WARNING - NO DATA' ,@session_id ,@procedure_name , @import_id , @sqlCommand , @site_id ;  
         END
   
 	----------------------------------------------------------------------------------------------------------------------
@@ -228,19 +228,19 @@ BEGIN
                 IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
                     EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;
                     SET @output=@output+'-- Number of day records deleted ' + convert(varchar(10),@rows)+'<br><br>';
-                    IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS DELETED DAY' ,@session_id , @procedure_name, @import_id ,@rows  , @site_id;
-                    IF @commands like '%-LOG_DELETE%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG DELETE ROWS DAY QUERY' ,@session_id ,@procedure_name, @import_id , @sqlCommand , @site_id; 
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS DELETED DAY' ,@session_id , @procedure_name, @import_id ,@rows  , @site_id;
+                    IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS DAY QUERY' ,@session_id ,@procedure_name, @import_id , @sqlCommand , @site_id; 
                 END
                 ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>';
             END
             ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>';                      
  		END TRY
  		BEGIN CATCH  
-            SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) ;
+            SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) ;
             SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             PRINT @sqlCommand;
             SET @output=@output+@data+'<br><br>';
-            EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand,@site_id;  
+            EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR' ,@session_id ,@import_id ,'CLEAN DAY',@sqlCommand,@site_id;  
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -264,8 +264,8 @@ BEGIN
             IF @errors=0 BEGIN 
                 IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
                     EXEC( @sqlCommand); SET @rows= @@ROWCOUNT
-                    IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG ROWS INSERTED' ,@session_id ,@procedure_name, @import_id , @rows  , @site_id;
-                    IF @commands like '%-LOG_INSERT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@procedure_name,@import_id , @sqlCommand , @site_id;
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS INSERTED' ,@session_id ,@procedure_name, @import_id , @rows  , @site_id;
+                    IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS' ,@session_id ,@procedure_name,@import_id , @sqlCommand , @site_id;
                     SET @output=@output+'day records inserted ' + convert(varchar(10),@rows)+'<br><br>';  
                 END
                 ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>';
@@ -273,11 +273,11 @@ BEGIN
             ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>';       
         END TRY
    		BEGIN CATCH  
-   			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()); 
+   			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()); 
             SET @output=@output+@data+'<br><br>';
             SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             PRINT @sqlCommand;
-			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'IMPORT ERROR INSERT DAY' ,@session_id ,@procedure_name,@import_id , @sqlCommand, @site_id
+			EXEC dbo.[A_SP_SYS_LOG] 'IMPORT ERROR INSERT DAY' ,@session_id ,@procedure_name,@import_id , @sqlCommand, @site_id
         END CATCH;   	  
 
 --***********************************************************
@@ -301,11 +301,11 @@ BEGIN
                 ELSE SET @output=@output+'-- <b>ERROR: Update import field query will not be executed due to errors. Please check the parameters.</b><br>';       
             END TRY
        		BEGIN CATCH  
-       			SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()); 
+       			SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()); 
                 SET @output=@output+@data+'<br><br>';
                 SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
                 PRINT @sqlCommand;
-                EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'UPDATE ERROR' ,@session_id ,@procedure_name , @import_id , @sqlCommand, @site_id
+                EXEC dbo.[A_SP_SYS_LOG] 'UPDATE ERROR' ,@session_id ,@procedure_name , @import_id , @sqlCommand, @site_id
             END CATCH;   	  
         END
 
@@ -336,19 +336,19 @@ BEGIN
                 IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
                     EXEC( @sqlCommand);SET @rows= @@ROWCOUNT;
                     SET @output=@output+'Number of intraday records deleted ' + convert(varchar(10),@rows)+'<br><br>'  
-                    IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG RECORDS DELETED INTRADAY', @session_id ,@procedure_name, @import_id, @rows, @site_id ;
-                    IF @commands like '%-LOG_DELETE%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG RECORDS DELETE INTRADAY' ,@session_id,@procedure_name , @import_id, @sqlCommand, @site_id ; 
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG RECORDS DELETED INTRADAY', @session_id ,@procedure_name, @import_id, @rows, @site_id ;
+                    IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] 'LOG RECORDS DELETE INTRADAY' ,@session_id,@procedure_name , @import_id, @sqlCommand, @site_id ; 
                 END
                 ELSE SET @output=@output+'-- <b>WARNING: Delete intraday query was not executed due to the schedule parameter.</b> <br>';
             END
             ELSE SET @output=@output+'-- <b>ERROR: Intraday queries will not be executed due to errors. Please check the parameters.</b><br>';                  
  		END TRY
  		BEGIN CATCH  
-        SET @data=JSON_MODIFY( @data,'$.error',MAIS_ANWB_P.[A_FN_SYS_ErrorJson]()) ;
+        SET @data=JSON_MODIFY( @data,'$.error',dbo.[A_FN_SYS_ErrorJson]()) ;
         SET @output=@output +@data+'<br><br>';
         SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
         PRINT @sqlCommand;
-        EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'ERROR - CLEAN INTRADAY' ,@session_id ,@procedure_name, @import_id , @sqlCommand , @site_id; 
+        EXEC dbo.[A_SP_SYS_LOG] 'ERROR - CLEAN INTRADAY' ,@session_id ,@procedure_name, @import_id , @sqlCommand , @site_id; 
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -374,19 +374,19 @@ BEGIN
                     EXEC( @sqlCommand);
                     SET @rows= @@ROWCOUNT;
                     SET @output=@output+'intraday records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
-                    IF @commands like '%-LOG_ROWCOUNT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG INSERT INTRADAY ROWS' ,@session_id ,@procedure_name, @import_id , @rows , @site_id;
-                    IF @commands like '%-LOG_INSERT%' EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'LOG INSERT ROWS INTRADAY' ,@session_id ,@procedure_name, @import_id ,@sqlCommand , @site_id;
+                    IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT INTRADAY ROWS' ,@session_id ,@procedure_name, @import_id , @rows , @site_id;
+                    IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS INTRADAY' ,@session_id ,@procedure_name, @import_id ,@sqlCommand , @site_id;
                 END
                 ELSE SET @output=@output+'-- <b>WARNING: Insert intraday query was not executed due to the schedule parameter.</b> <br>'
             END
             ELSE SET @output=@output+'-- <b>ERROR: Intraday queries will not be executed due to errors. Please check the parameters.</b><br>'                  
         END TRY
    		BEGIN CATCH  
-   			SET @data=MAIS_ANWB_P.[A_FN_SYS_ErrorJson](); 
+   			SET @data=dbo.[A_FN_SYS_ErrorJson](); 
             SET @output=@output + @data+'<br><br>';
             SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             PRINT @sqlCommand;
-			EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'ERROR: INSERT INTRADAY' ,  @session_id ,  @procedure_name, @import_id , @sqlCommand, @site_id;
+			EXEC dbo.[A_SP_SYS_LOG] 'ERROR: INSERT INTRADAY' ,  @session_id ,  @procedure_name, @import_id , @sqlCommand, @site_id;
 	    END CATCH;   
 
 	END -- end if intraday
@@ -420,12 +420,12 @@ BEGIN
     IF @imports_fetched=0 BEGIN
         SET @data= 'No active imports found for A_SP_IMPORT SQL SP. Try to check the procedure name and other parameters ';
         SET @output=@output + '<br>' + @data;
-        EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'WARNING PROCEDURE' ,@session_id ,@procedure_name ,'IMPORTS FETCHING' , @data, @site_id;
+        EXEC dbo.[A_SP_SYS_LOG] 'WARNING PROCEDURE' ,@session_id ,@procedure_name ,'IMPORTS FETCHING' , @data, @site_id;
         PRINT @data; 
     END
 
 	SET @data=DATEDIFF(second,@start_time,getdate());
-	EXEC MAIS_ANWB_P.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id , @procedure_name ,'Duration sec', @data, @site_id;
+	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id , @procedure_name ,'Duration sec', @data, @site_id;
     SET @output=@output + '<br>Procedure finished. It took ' + @data + ' sec.';
     PRINT 'Procedure '+ @procedure_name + ' finished. It took ' + @data + ' sec.';
 
