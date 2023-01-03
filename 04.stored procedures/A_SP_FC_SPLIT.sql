@@ -332,9 +332,10 @@ BEGIN
     <br> Example:
     <br> source=120167.5 106857 115187 109621 118050 117460 119799 117152 110963 112695 114696 121626
     <br> filter=activity_id=99 and forecast_id=1 and year=2022
-    <br> Schedule 
-    <br> will be splitted into 
-   
+    <br> Schedule date_import_from = ''2022-01-01'' date_import_until = ''2022-12-31''
+    <br> Historical data is selected accroding to the filter , grouped per day and a month weight is assigned to each day. 
+    <br> The total for the first month (120167.5) is splitted among the days of the first month in the period between date_import_from and date_import_until
+    <br> according to the first month day weights. 
     <br>
     <br>SP PARAMETERS
     <br>@activity_id int = 0     -- run imports for an activity_id or 0 for all.
