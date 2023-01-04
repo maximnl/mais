@@ -7,9 +7,9 @@ GO
 CREATE OR ALTER       VIEW [dbo].[A_IMPORT_RUN]
 as
     SELECT I.import_id
-     	, case  when isnull(A.[domain],'')>'' then A.[domain] 
+     	, case  when isnull(A.[domain],'')>'' then A.[domain] 
                 when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
-     	, isnull(ltrim(rtrim(P.[procedure_name])),'') procedure_name
+     	, isnull(ltrim(rtrim(P.[procedure_name])),'') [procedure_name]
         , isnull(ltrim(rtrim(P.[procedure_code])),'') procedure_code
         , isnull(ltrim(rtrim(P.app)),'') app
         , isnull(ltrim(rtrim(P.[status])),'') status
@@ -18,14 +18,14 @@ as
         , rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands
         , isnull(I.[activity_id],0) activity_id
         , isnull(I.[forecast_id],0) forecast_id
-     	, isnull(case when isnull(I.[p1],'')>'' then ltrim(rtrim(I.[p1])) else ltrim(rtrim(P.[p1])) end,'') as [p1]
+     	, isnull(case when isnull(I.[p1],'')>'' then ltrim(rtrim(I.[p1])) else ltrim(rtrim(P.[p1])) end,'') as [p1]
         , isnull(case when isnull(I.[p2],'')>'' then ltrim(rtrim(I.[p2])) else ltrim(rtrim(P.[p2])) end,'') as [p2]
         , isnull(case when isnull(I.[p3],'')>'' then ltrim(rtrim(I.[p3])) else ltrim(rtrim(P.[p3])) end,'') as [p3]
         , isnull(case when isnull(I.[p4],'')>'' then ltrim(rtrim(I.[p4])) else ltrim(rtrim(P.[p4])) end,'') as [p4]
         , isnull(case when isnull(I.[p5],'')>'' then ltrim(rtrim(I.[p5])) else ltrim(rtrim(P.[p5])) end,'') as [p5]
         , isnull(P.[sort_order],1) *1000+ isnull(A.[sort_order],1) * 100 + isnull(I.[sort_order],1) sort_order
         , isnull(P.description,'') as description
-     	, case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
+     	, case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
 			isnull(I.[date_import_from], isnull(P.date_import_from, '1900-01-01')) end date_import_from
         , case when isnull(P.[days_forward],0)+isnull(I.[days_forward],0) >0 then dateadd(D, 1 * case when isnull(I.[days_forward],0)>0 then I.[days_forward] else P.[days_forward] end,getdate()) else 
 			isnull(I.[date_import_until],isnull(P.date_import_until, '9999-01-01')) end date_import_until
@@ -42,12 +42,21 @@ as
         , isnull(ltrim(rtrim(A.parent)),'') parent
         , isnull(ltrim(rtrim(A.resource)),'') resource
         , isnull(ltrim(rtrim(A.channel)),'') channel
+        , isnull(ltrim(rtrim(A.segment)),'') segment
+        , F.forecast_name as forecast_name
         , I.site_id
+        , case when I.active=1 and P.active=1 and A.active=1 and F.active=1  then 1 else 0 end as active
+        , case when isnull(I.date_updated,'1900-01-01')>isnull(P.date_updated,'1900-01-01') then I.date_updated else P.date_updated end as date_updated
     FROM dbo.[A_IMPORT] I
         inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
         inner join dbo.[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
         inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
-    where I.active=1 and P.active=1 and A.active=1 and F.active=1 and isnull(I.[activity_id],0)>0 and isnull(I.[forecast_id],0)>0 and I.site_id>0
+    where isnull(I.[activity_id],0)>0 and isnull(I.[forecast_id],0)>0 and I.site_id>0
+
+-- version 20230104
+-- removed active where filter
+-- extra fields added
+-- the view is now usefull for both processing jobs and applications as it has a merge of the imports the procedures attributes
 
 -- version 20220908
 -- domain from the activity is made leading
