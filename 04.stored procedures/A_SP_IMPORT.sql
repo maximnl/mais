@@ -186,7 +186,7 @@ BEGIN
         SET @output=@output+'-- DETECTED SOURCE DATES RANGE '+@dates+'<br>';
         SET @output=@output+'-- '+@sqlCommand+'<br>'; 
 
-        IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(convert(float,',replace(@fields_source,',',')),SUM(convert(float,('),'))')
+        IF @commands like '%-SUMFIELDS%' and @fields_source not like '%SUM(%)%' set @fields_source= concat('SUM(try_convert(real,',replace(@fields_source,',',')),SUM(try_convert(real,('),'))')
 
         set @data = left((concat(concat('{"p1":"',@p1,'",'),
         concat('"p2":"',@p2,'",'),
