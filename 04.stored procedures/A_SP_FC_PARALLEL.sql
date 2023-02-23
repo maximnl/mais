@@ -6,7 +6,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-ALTER  PROCEDURE [dbo].[A_SP_FC_PARALLEL]
+CREATE  PROCEDURE [dbo].[A_SP_FC_PARALLEL]
  @import_id int = 0
 ,@activity_id int = 0 -- serie activity_id
 ,@forecast_id int = 0 -- serie forecast_id
