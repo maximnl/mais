@@ -1,3 +1,5 @@
+ 
+/****** Object:  StoredProcedure [dbo].[A_SP_FC_PARALLEL]    Script Date: 7-3-2023 10:51:07 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -6,7 +8,7 @@ GO
 
 
 -- template stored procedure for loading data from source tables
-CREATE  PROCEDURE [dbo].[A_SP_FC_PARALLEL]
+ALTER  PROCEDURE [dbo].[A_SP_FC_PARALLEL]
  @import_id int = 0
 ,@activity_id int = 0 -- serie activity_id
 ,@forecast_id int = 0 -- serie forecast_id
@@ -21,6 +23,7 @@ BEGIN
     SET DATEFIRST 1
 --  configuration
     DECLARE @sqlCommand NVARCHAR(MAX) =''-- 
+    DECLARE @SP varchar(20) = 'A_SP_FC_PARALLEL';
 
 --  source data parameters
 	DECLARE @filter nvarchar(4000)=''           -- where filter for filtering source data
@@ -44,11 +47,17 @@ BEGIN
 	DECLARE @p5 varchar(2000)=''
 	DECLARE @groupby varchar(2000)=''
 
-	-- login parameters
+	-- log variables
 	DECLARE @data  varchar(4000)=''  -- log data
 	DECLARE @rows INT   -- keep affected rows
 	DECLARE @start_time datetime=null
     DECLARE @output nvarchar(max)='';
+    DECLARE @imports_fetched int=0
+    DECLARE @errors int = 0 ; -- import errors
+    DECLARE @errors_global int = 0; 
+    DECLARE @rows_deleted_global INT = 0;
+    DECLARE @rows_inserted_global INT = 0;
+    DECLARE @summary varchar(200) = '';  
 
 	-- source data analysis
 	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
@@ -89,10 +98,11 @@ BEGIN
 		AND ([procedure_id] = try_convert(int,@procedure_name) or [procedure_name] like @procedure_name or @procedure_name='' ) 
 		AND (activity_id=@activity_id or @activity_id=0)
         AND ([category] like @category or @category='')
-        AND procedure_code='A_SP_FC_PARALLEL'
-    ORDER BY [sort_order],[procedure_name]
+        AND procedure_code=@SP
+        AND active=1
+    ORDER BY [sort_order],[procedure_name];
     
-	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE START' ,@session_id  ,@activity_id  , @procedure_name ,@commands, @site_id
+	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step='SQL SP START', @data=@commands;
 	SET @start_time     = GETDATE()
 
 ----------------------------------------------
@@ -125,8 +135,10 @@ BEGIN
 	WHILE @@FETCH_STATUS = 0 
 
    	BEGIN 
-        DECLARE @errors int = 0 
+        
         DECLARE @on_schedule bit=1
+        SET @errors  = 0 
+        SET @imports_fetched=@imports_fetched+1;
 
         -- if source or target fields are empty set it by default to all value fields
         IF @fields_source='' OR @fields_target='' BEGIN 
@@ -166,9 +178,12 @@ BEGIN
         IF @activity_id=0 OR @forecast_id=0 SET @errors=@errors+1 
         IF @date_import_until<@date_import_from  BEGIN 
             SET @errors=@errors+1 
-            SET @output=@output+'-- <b>ERROR: Source dates cannot be found. Queries will not be executed due to errors. 
-            Please check if source exists and/or the dates parameters.</b><br>'   
-            EXEC dbo.[A_SP_SYS_LOG]  'ERROR IMPORT' ,@session_id ,@procedure_name, @import_id , @sqlCommand , @site_id ;  
+            SET @output=@output+'-- <b>ERROR: date_import_from is larger than date_import_until. <br> 
+            Queries will not be executed due to errors. <br>
+            Please check if source exists and/or the dates parameters.</b><br>'   ;
+
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step='IMPORT DATE RANGE TEST', @result='Failed' ;
+            PRINT @output;
         END
 		 
 	----------------------------------------------------------------------------------------------------------------------
@@ -189,10 +204,11 @@ BEGIN
             BEGIN
                 IF @errors=0 BEGIN 
                     IF (@on_schedule=1) BEGIN                     
-                        EXEC( @sqlCommand); SET @rows = @@ROWCOUNT            
+                        EXEC( @sqlCommand); SET @rows = @@ROWCOUNT   
+                        SET @rows_deleted_global=@rows_deleted_global+@rows;         
                         SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
-                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS' ,@session_id ,@import_id ,'RECORDS DELETE DAY',@rows  , @site_id
-                        IF @commands like '%-LOG_DELETE%'   EXEC dbo.[A_SP_SYS_LOG] 'LOG DELETE ROWS' ,@session_id ,@import_id ,'DELETE QUERY DAY',@sqlCommand  , @site_id
+                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_ROWCOUNT DELETED',@data=@fact_day, @value=@rows; 
+                        IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_DELETE', @data=@sqlCommand; 
                     END
                     ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>';
                 END
@@ -200,11 +216,12 @@ BEGIN
             END ELSE PRINT @sqlCommand
  		END TRY
  		BEGIN CATCH  
+            SET @errors=@errors+1;
 			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
             SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             PRINT @sqlCommand;
             SET @output=@output+ '<b>ERROR:' + @data+'</b><br><br>';
-			EXEC dbo.[A_SP_SYS_LOG] 'ERROR IMPORT - CLEAN DAY' ,@session_id ,@procedure_name,@import_id , @sqlCommand , @site_id;
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='CLEAN DAY', @data=@sqlCommand; 
  		END CATCH;   
 
 	--------------------------------------------------------------------------------------------------------------------------
@@ -230,23 +247,28 @@ BEGIN
             BEGIN 
                 IF @errors=0 BEGIN 
                     IF (@on_schedule=1) BEGIN
-                        EXEC( @sqlCommand); SET @rows= @@ROWCOUNT
-                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG ROWS INSERT DAY' ,@session_id ,@procedure_name,@import_id , @rows  , @site_id
-                        IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] 'LOG INSERT ROWS QUERY' ,@session_id ,@procedure_name,@import_id , @sqlCommand , @site_id
+                        EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;
+                        SET @rows_inserted_global=@rows_inserted_global+@rows;
+                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_ROWCOUNT INSERT',@data=@fact_day, @value=@rows; 
+                        IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_INSERT', @data=@sqlCommand; 
                         SET @output=@output+' day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
                     END
                     ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>'
                 END
                 ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>'       
-            END ELSE PRINT @sqlCommand
+            END 
+            ELSE PRINT @sqlCommand
         END TRY
    		BEGIN CATCH  
+            SET @errors=@errors+1;
    			SET @data=dbo.[A_FN_SYS_ErrorJson]()
             SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
             PRINT @sqlCommand; 
             SET @output=@output+ '<b>ERROR:' + @data+'</b><br>'
-			EXEC dbo.[A_SP_SYS_LOG] 'ERROR IMPORT: INSERT DAY' ,@session_id ,@procedure_name,@import_id ,@sqlCommand, @site_id
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='INSERT DAY', @data=@sqlCommand; 
 	    END CATCH;   	  
+
+        SET @errors_global=@errors_global+@errors;
 
  		FETCH NEXT FROM TAB_CURSOR 
  		INTO @import_id 
@@ -273,8 +295,16 @@ BEGIN
 	CLOSE TAB_CURSOR 
 	DEALLOCATE TAB_CURSOR
 
-	SET @data=DATEDIFF(second,@start_time,getdate())
-	EXEC dbo.[A_SP_SYS_LOG] 'PROCEDURE FINISH' ,@session_id  , @procedure_name , null, @data , @site_id
+	SET @data=format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3')
+    SET  @summary='{}'
+		set  @summary=JSON_MODIFY( @summary,'$.ImportsFetched',CONVERT(varchar(10), @imports_fetched))
+		set  @summary=JSON_MODIFY( @summary,'$.RowsDeleted',CONVERT(varchar(10), @rows_deleted_global))
+		set  @summary=JSON_MODIFY( @summary,'$.RowsInserted',CONVERT(varchar(10), @rows_inserted_global))
+        set  @summary=JSON_MODIFY( @summary,'$.Errors',CONVERT(varchar(10), @errors_global))
+		 
+	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+    , @step='SQL SP FINISH', @duration=@data, @result='Succeeded', @data=@summary;
+
     SET @output=@output + '<br> It took ' + @data + ' sec.'
 
     
@@ -312,4 +342,3 @@ BEGIN
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
-GO
