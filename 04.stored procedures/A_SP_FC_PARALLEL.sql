@@ -1,5 +1,5 @@
  
-/****** Object:  StoredProcedure [dbo].[A_SP_FC_PARALLEL]    Script Date: 7-3-2023 10:51:07 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_FC_PARALLEL]    Script Date: 18-3-2023 10:59:32 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -19,59 +19,47 @@ ALTER  PROCEDURE [dbo].[A_SP_FC_PARALLEL]
 ,@session_id varchar(50)  = null
 AS
 BEGIN
-    SET NOCOUNT ON;
-    SET DATEFIRST 1
---  configuration
-    DECLARE @sqlCommand NVARCHAR(MAX) =''-- 
+   
     DECLARE @SP varchar(20) = 'A_SP_FC_PARALLEL';
+  
+-- SNIPPET INIT ********************************************************
+	SET NOCOUNT ON;
+    SET DATEFIRST 1  -- SET MONDAY AS THE FIRST DAY OF WEEK 
 
---  source data parameters
-	DECLARE @filter nvarchar(4000)=''           -- where filter for filtering source data
-	DECLARE @date_import_from date='9999-01-01' -- calculated by the import query using imports and procedures fields
-	DECLARE @date_import_until date='1900-01-01'
-	DECLARE @fields_source varchar(2000)=''     -- source fields
-	DECLARE @fields_target varchar(2000)=''     -- target fields value1
-	DECLARE @schedule varchar(2000)=''
-	DECLARE @source varchar(2000)=''
-	DECLARE @group_by varchar(2000)=''
-
--- target parameters
-    DECLARE @fact_day nvarchar(200) ='[A_FACT_DAY]' -- data per day stored here
-    DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]' -- data per day/interval_id is stored here. conform a_time_interval dimension
-    
-    -- parameters
-	DECLARE @p1 varchar(2000)=''                
+	--  ADDITIONAL VARIABLES FOR FETCHING CONFIGURATION FROM THE IMPORT DATA	
+	DECLARE @p1 varchar(2000)=''  -- parameters
 	DECLARE @p2 varchar(2000)=''
 	DECLARE @p3 varchar(2000)=''
 	DECLARE @p4 varchar(2000)=''
 	DECLARE @p5 varchar(2000)=''
-	DECLARE @groupby varchar(2000)=''
+	DECLARE @date_import_from date='9999-01-01' -- calculated by the import query using imports and procedures fields
+	DECLARE @date_import_until date='1900-01-01'
+	DECLARE @fields_source varchar(2000)='' -- source fields
+	DECLARE @fields_target varchar(2000)=''  -- target fields value1
+	DECLARE @schedule varchar(2000)=''
+	DECLARE @filter nvarchar(4000)='' -- where filter for filtering source data
+	DECLARE @source varchar(2000)=''
+	DECLARE @date varchar(2000)=''
+    DECLARE @parent varchar(200)=''
 
-	-- log variables
-	DECLARE @data  varchar(4000)=''  -- log data
-	DECLARE @rows INT   -- keep affected rows
+	-- PROCEDURE SUPPORT GLOBAR VARIABLES
+	DECLARE @output nvarchar(max)='';
+	DECLARE @imports_fetched int=0
 	DECLARE @start_time datetime=null
-    DECLARE @output nvarchar(max)='';
-    DECLARE @imports_fetched int=0
-    DECLARE @errors int = 0 ; -- import errors
+	DECLARE @step varchar(200)=''
     DECLARE @errors_global int = 0; 
+	DECLARE @warnings_global int =0;
     DECLARE @rows_deleted_global INT = 0;
     DECLARE @rows_inserted_global INT = 0;
-    DECLARE @summary varchar(200) = '';  
+	DECLARE @rows_updated_global INT = 0;
 
-	-- source data analysis
-	DECLARE @date_source_min date='9999-01-01' -- calculated by the import query using imports and procedures fields
-	DECLARE @date_source_max date='1900-01-01'
-    DECLARE @day_source varchar(max)=''
-
-	-- intraday parameters
-	DECLARE @intraday_join varchar(2000)=''
-	DECLARE @intraday_interval_id varchar(200)='interval_id'
-	DECLARE @intraday_duration varchar(5)='15' -- default intraday interval duration in min
-    DECLARE @intraday_source varchar(max)=''
-
-    IF @session_id is null BEGIN SET @session_id=newid() END
-
+    IF @session_id is null SET @session_id=newid();    
+--------------------------------------------------------------------------------------------------
+	SET @step='SQL SP START';
+--------------------------------------------------------------------------------------------------
+	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step=@step, @data=@commands,@result='Succeeded'
+	SET @start_time     = GETDATE()
+	
 	DECLARE TAB_CURSOR CURSOR  FOR 
     SELECT import_id 
  	  ,[activity_id]
@@ -79,8 +67,8 @@ BEGIN
       ,[p1]
       ,[p2]
       ,[p3]
-      ,[p4]
-      ,[p5]
+      ,[p4]  
+      ,[p5]  
       ,[date_import_from]
       ,[date_import_until]
       ,[fields_source]
@@ -92,27 +80,22 @@ BEGIN
 	  ,concat(@commands,' ',commands)
 	  ,[procedure_name]
 	  ,site_id
+      ,parent
     FROM   dbo.[A_IMPORT_RUN]
     WHERE   (import_id=@import_id or @import_id=0) 
-		AND (site_id=@site_id or site_id is null or @site_id=0)
-		AND ([procedure_id] = try_convert(int,@procedure_name) or [procedure_name] like @procedure_name or @procedure_name='' ) 
-		AND (activity_id=@activity_id or @activity_id=0)
-        AND ([category] like @category or @category='')
-        AND procedure_code=@SP
-        AND active=1
-    ORDER BY [sort_order],[procedure_name];
-    
-	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step='SQL SP START', @data=@commands;
-	SET @start_time     = GETDATE()
+    AND (site_id=@site_id or site_id is null or @site_id=0)
+    AND ([procedure_id] = try_convert(int,@procedure_name) or [procedure_name] like @procedure_name or @procedure_name='') 
+    AND (activity_id=@activity_id or @activity_id=0)
+    AND procedure_code=@SP 
+    AND active=1
+    ORDER BY [sort_order],[procedure_name]
 
-----------------------------------------------
---  FETCH ALL IMPORTS FOR THE CURRENT SP
-----------------------------------------------
+	----------------------------------------------
+	--  FETCH ALL IMPORTS FOR THE CURRENT SP
+	----------------------------------------------
 	OPEN TAB_CURSOR 
-
 	FETCH NEXT FROM TAB_CURSOR 
-
-	INTO   @import_id 
+	INTO     @import_id 
  			,@activity_id
      		,@forecast_id
      		,@p1
@@ -127,30 +110,73 @@ BEGIN
      		,@schedule
      		,@filter
      		,@source
-     		,@group_by
+     		,@date
 			,@commands
 			,@procedure_name 
 			,@site_id
-
+            ,@parent
 	WHILE @@FETCH_STATUS = 0 
-
    	BEGIN 
-        
-        DECLARE @on_schedule bit=1
-        SET @errors  = 0 
-        SET @imports_fetched=@imports_fetched+1;
+
+		-- IMPORT SUPPORT VARIABLES 
+		DECLARE @fact_day nvarchar(200)='[A_FACT_DAY]' -- day dataset 
+		DECLARE @fact_intraday nvarchar(200)='[A_FACT_INTRADAY]' -- intraday dataset  
+		DECLARE @sqlCommand NVARCHAR(MAX) -- 	
+		DECLARE @data  varchar(4000)=''  -- log data
+		DECLARE @rows INT=0   -- keep affected rows
+		DECLARE @rows_deleted INT=0
+		DECLARE @rows_inserted INT=0
+		DECLARE @rows_updated INT = 0;
+		DECLARE @errors int = 0 ; -- import errors
+		DECLARE @warnings int =0;
+		DECLARE @start_time_step datetime=null
+		DECLARE @start_time_import datetime=null
+		DECLARE @duration real=null	
+		DECLARE @date_source_min date='9999-01-01' -- source date analysis for delta range
+		DECLARE @date_source_max date='1900-01-01'
+		DECLARE @day_source varchar(max)=''
+		DECLARE @on_schedule bit=1
+
+		SET @imports_fetched=@imports_fetched+1;
+		SET @start_time_import     = GETDATE()
+
+		-------------------------------------------------------
+		SET @step= 'SCHEDULE TEST';
+		-------------------------------------------------------
+		SET @start_time_step     = GETDATE()
+		IF @schedule>'' BEGIN TRY
+            SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' + @schedule + ' THEN ''1'' ELSE ''0'' END'
+            EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
+        END TRY
+		BEGIN CATCH  
+            SET @errors=@errors+1;
+			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
+            SET @output=@output+ '<b>error information ' + @data+'</b></br>' + @sqlCommand + '</br></br>';
+            PRINT @data; PRINT @sqlCommand ; 
+			SET @data=@data + @sqlCommand;
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+        END CATCH;   
+
+		--------------------------------------------------------------------------------------------------
+		SET @step = 'PARAMETERS TEST';
+		--------------------------------------------------------------------------------------------------
+		SET @start_time_step     = GETDATE()
+
+		-- FOLLOWED ALWAYS BY A PROCEDURE SPECIFIC PARAMETERS SETUP AND TESTS
+
+-- SNIPPET INIT END  *********************************************************
 
         -- if source or target fields are empty set it by default to all value fields
         IF @fields_source='' OR @fields_target='' BEGIN 
             SET @fields_source='[value1],[value2],[value3],[value4],[value5],[value6],[value7],[value8],[value9],[value10]';
             SET @fields_target='[value1],[value2],[value3],[value4],[value5],[value6],[value7],[value8],[value9],[value10]';
-            SET @output=@output+'-- <b>WARNING: Source or target fields are not specified. Setting defaults. <b>';
+			IF @commands like '%-LOG_WARNING%' BEGIN
+				SET @data='WARNING: [source_fields] or [target_fields] parameters are not specified. Setting defaults.
+				 import id= ' + convert(varchar(10),@import_id) + ' Step: ' + @step; 
+				PRINT @data; SET @output=@output+'<b>' + @data + '</b><br>';  
+				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data;   
+			END
         END
-
-        IF @schedule>'' BEGIN
-            SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' +@schedule + ' THEN 1 ELSE 0 END'
-            EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
-        END 
 
         IF @filter='' SET @filter='S.activity_id='+convert(varchar(10),@activity_id)
 
@@ -174,142 +200,263 @@ BEGIN
 
 		-- we skip source delta check , there are no requirements
 
-        -- test parameters before running all
-        IF @activity_id=0 OR @forecast_id=0 SET @errors=@errors+1 
-        IF @date_import_until<@date_import_from  BEGIN 
-            SET @errors=@errors+1 
-            SET @output=@output+'-- <b>ERROR: date_import_from is larger than date_import_until. <br> 
-            Queries will not be executed due to errors. <br>
-            Please check if source exists and/or the dates parameters.</b><br>'   ;
-
-            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step='IMPORT DATE RANGE TEST', @result='Failed' ;
-            PRINT @output;
-        END
+        IF  @date_import_until<@date_import_from  BEGIN  
+			SET @warnings=@warnings+1;
+			IF @commands like '%-LOG_WARNING%' BEGIN
+				SET @data='Warning: Date import from is larger than date import until. The import query will not be executed. 
+				 import id= ' + convert(varchar(10),@import_id) + '. filter=' + @filter + ' Step: ' + @step; 
+				PRINT @data; SET @output=@output+'<b>' + @data + '</b><br>';  
+				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data;   
+			END
+		END
 		 
-	----------------------------------------------------------------------------------------------------------------------
-	--  CLEAN DAY
-
- 	-- this SP supports batch loading, so several activities passed in the @filter parameter, 
-	-- so we deviate from the standard import delete here
 	--------------------------------------------------------------------------------	
+		SET @step='DELETE DAY'
+		----------------------------------------------------------------------------------------------------------------------
 		SET @sqlCommand =' DELETE S FROM ' + @fact_day + ' S'+ 
 		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
         ' WHERE ' + @filter + ' AND S.forecast_id=' + convert(varchar(10),@forecast_id) 
         + ' AND S.site_id =' + convert(varchar(10),@site_id) 
         + ' AND S.date between ''' 
 		 + convert(varchar(10),@date_import_from,126) + ''' AND '''+ convert(varchar(10),@date_import_until,126) + ''';';
- 		BEGIN TRY			
-            SET @output=@output+'-- DELETING DAY DATA <br>'+@sqlCommand+'<br><br>';
-			IF @commands not like '%-PRINT%' 
-            BEGIN
-                IF @errors=0 BEGIN 
-                    IF (@on_schedule=1) BEGIN                     
-                        EXEC( @sqlCommand); SET @rows = @@ROWCOUNT   
-                        SET @rows_deleted_global=@rows_deleted_global+@rows;         
-                        SET @output=@output+'day records deleted ' + convert(varchar(10),@rows)+'<br><br>'
-                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_ROWCOUNT DELETED',@data=@fact_day, @value=@rows; 
-                        IF @commands like '%-LOG_DELETE%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_DELETE', @data=@sqlCommand; 
-                    END
-                    ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>';
+
+
+ 		 		
+-- SNIPPET QUERY EXECUTE START ********************************************************
+		SET @start_time_step     = GETDATE();
+		SET @rows=0;
+		IF @commands like '%-LOG_QUER%' BEGIN
+			SET @data = @step +  ' QUERY'; 
+			SET @output=@output + @data + '<br>'+@sqlCommand+'<br><br>';  			 
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Debug', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+			, @object_id=@import_id, @step=@step, @data=@sqlCommand; 
+			PRINT @data; PRINT @sqlCommand;
+		END
+         
+        IF @commands not like '%-PRINT%' AND  @date_import_until>=@date_import_from BEGIN TRY
+            IF @errors=0 BEGIN 
+                IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
+                    EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;				
+					
+					SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_step,getdate())/1000.0,'N3'))
+					IF @commands like '%-LOG_ROWCOUNT%' BEGIN
+						EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @duration=@duration
+						, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step,@data=@sqlCommand, @value=@rows;
+						SET @data=@step + ' query executed. import_id=' + convert(varchar(20),@import_id) + '. Total records ' + convert(varchar(10),@rows);
+						SET @output=@output + @data +  '<br>';
+						PRINT @data;
+					END
                 END
-                ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>';              
-            END ELSE PRINT @sqlCommand
+                ELSE BEGIN		-- not on schedule, no execution		
+					SET @warnings=@warnings+1;
+					IF @commands like '%-LOG_WARNING%' BEGIN
+						SET @data = 'WARNING: ' + @step + ' query was not executed due to the scheduling parameter.';				
+						PRINT @data;
+						EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+						SET @output=@output+'<b>' + @data +'</b> <br>';						
+					END
+				END
+            END           
  		END TRY
  		BEGIN CATCH  
             SET @errors=@errors+1;
-			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
-            SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
-            PRINT @sqlCommand;
-            SET @output=@output+ '<b>ERROR:' + @data+'</b><br><br>';
-			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='CLEAN DAY', @data=@sqlCommand; 
- 		END CATCH;   
+			SET @data=dbo.[A_FN_SYS_ErrorJson]();
+			SET @data = @data + 'ERROR: ' +  'import_id=' + convert(varchar(10),@import_id) + ' STEP '  + @step;
+            SET @output=@output+ '<b>' + @data+'</b></br>' + @sqlCommand + '</br></br>';
+            PRINT @data; PRINT @sqlCommand ; 
+			SET @data=@data + @sqlCommand;
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+		END CATCH;   
 
-	--------------------------------------------------------------------------------------------------------------------------
-	--  INSERT TO DAY
+-- SNIPPET QUERY EXECUTE END  *********************************************************
+
+		SET @rows_deleted=@rows;		
+
 	-------------------------------------------------------------------------------------
+        SET @step='INSERT DAY';
+		--------------------------------------------------------------------------------------------------------------------------	
  		 
 		SET @sqlCommand = ' INSERT INTO '+ @fact_day 
         +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id) '+
        ' SELECT D.date, activity_id, ' + convert(varchar(10),@forecast_id) 
 	+ ' as forecast_id, ' + convert(varchar(10),@import_id) + ','+
 	+ @fields_source +',site_id FROM ( select S.*, d.' + @p2+', d.'+@p3+', d.'+@p4+',A.activity_set,A.domain,A.category'+
-   		' FROM ' + @fact_day +'  S'+
-		' INNER JOIN [A_DIM_ACTIVITY] A on S.activity_id=A.activity_id' +
-   		' INNER JOIN [A_TIME_DATE] d on S.[date]=d.[date]' +
+   		' FROM ' + @fact_day +'  S  WITH (NOLOCK) '+
+		' INNER JOIN [A_DIM_ACTIVITY] A  WITH (NOLOCK) on S.activity_id=A.activity_id' +
+   		' INNER JOIN [A_TIME_DATE] D  WITH (NOLOCK) on S.[date]=d.[date]' +
    		' AND forecast_id=' + convert(varchar(10),@p1) + ' AND ' + @filter +' WHERE S.site_id =' + convert(varchar(10),@site_id) + ' ) as SD'+
      	 ' INNER JOIN [A_TIME_DATE] D on D.date between ''' 
 		 + convert(varchar(10),@date_import_from,126) + ''' and '''+ convert(varchar(10),@date_import_until,126) 
 		 + ''' AND SD.' + @p2+'=D.' + @p2+' AND ((SD.'+@p3+'=D.'+@p3+' and SD.'+@p4+'=(D.'+@p4+'-' + convert(varchar(10),@p5)+ ')));'
  	
- 		BEGIN TRY
-            SET @output=@output+ '-- INSERTING DAY DATA <br>'+ @sqlCommand + '<br><br>';
-			IF @commands not like '%-PRINT%'
-            BEGIN 
-                IF @errors=0 BEGIN 
-                    IF (@on_schedule=1) BEGIN
-                        EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;
-                        SET @rows_inserted_global=@rows_inserted_global+@rows;
-                        IF @commands like '%-LOG_ROWCOUNT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_ROWCOUNT INSERT',@data=@fact_day, @value=@rows; 
-                        IF @commands like '%-LOG_INSERT%' EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='-LOG_INSERT', @data=@sqlCommand; 
-                        SET @output=@output+' day records inserted ' + convert(varchar(10),@rows)+'<br><br>'  
-                    END
-                    ELSE SET @output=@output+'-- <b>WARNING: Delete query was not executed due to the schedule parameter.</b> <br>'
+			
+-- SNIPPET QUERY EXECUTE START ********************************************************
+		SET @start_time_step     = GETDATE();
+		SET @rows=0;
+		IF @commands like '%-LOG_QUER%' BEGIN
+			SET @data = @step +  ' QUERY'; 
+			SET @output=@output + @data + '<br>'+@sqlCommand+'<br><br>';  			 
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Debug', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+			, @object_id=@import_id, @step=@step, @data=@sqlCommand; 
+			PRINT @data; PRINT @sqlCommand;
+		END
+         
+        IF @commands not like '%-PRINT%' AND  @date_import_until>=@date_import_from BEGIN TRY
+            IF @errors=0 BEGIN 
+                IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
+                    EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;				
+					
+					SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_step,getdate())/1000.0,'N3'))
+					IF @commands like '%-LOG_ROWCOUNT%' BEGIN
+						EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @duration=@duration
+						, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step,@data=@sqlCommand, @value=@rows;
+						SET @data=@step + ' query executed. import_id=' + convert(varchar(20),@import_id) + '. Total records ' + convert(varchar(10),@rows);
+						SET @output=@output + @data +  '<br>';
+						PRINT @data;
+					END
                 END
-                ELSE SET @output=@output+'-- <b>ERROR: Queries will not be executed due to errors. Please check the parameters.</b><br>'       
-            END 
-            ELSE PRINT @sqlCommand
-        END TRY
-   		BEGIN CATCH  
+                ELSE BEGIN		-- not on schedule, no execution		
+					SET @warnings=@warnings+1;
+					IF @commands like '%-LOG_WARNING%' BEGIN
+						SET @data = 'WARNING: ' + @step + ' query was not executed due to the scheduling parameter.';				
+						PRINT @data;
+						EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+						SET @output=@output+'<b>' + @data +'</b> <br>';						
+					END
+				END
+            END           
+ 		END TRY
+ 		BEGIN CATCH  
             SET @errors=@errors+1;
-   			SET @data=dbo.[A_FN_SYS_ErrorJson]()
-            SET @sqlCommand = @sqlCommand + '/* error information:' + @data + '*/';
-            PRINT @sqlCommand; 
-            SET @output=@output+ '<b>ERROR:' + @data+'</b><br>'
-			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step='INSERT DAY', @data=@sqlCommand; 
-	    END CATCH;   	  
+			SET @data=dbo.[A_FN_SYS_ErrorJson]();
+			SET @data = @data + 'ERROR: ' +  'import_id=' + convert(varchar(10),@import_id) + ' STEP '  + @step;
+            SET @output=@output+ '<b>' + @data+'</b></br>' + @sqlCommand + '</br></br>';
+            PRINT @data; PRINT @sqlCommand ; 
+			SET @data=@data + @sqlCommand;
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+		END CATCH;   
 
-        SET @errors_global=@errors_global+@errors;
+-- SNIPPET QUERY EXECUTE END  *********************************************************
+		
+		SET @rows_inserted=@rows;    
 
- 		FETCH NEXT FROM TAB_CURSOR 
- 		INTO @import_id 
- 			,@activity_id
-     		,@forecast_id
-     		,@p1
-     		,@p2
-     		,@p3
-     		,@p4
-     		,@p5
-     		,@date_import_from
-     		,@date_import_until
-     		,@fields_source
-     		,@fields_target
-     		,@schedule
-     		,@filter
-     		,@source
-     		,@group_by
-			,@commands 
-			,@procedure_name 
-			,@site_id
-   		END -- END OF FETCHING IMPORTS
+ 		  
+-- SNIPPET FINISHING PROCEDURE ********************************************************
+		--------------------------------------------------------------------------------------------------------------------------    
+		SET @step = 'IMPORT SUMMARY';
+		--------------------------------------------------------------------------------------------------------------------------
+		SET @errors_global=@errors_global+@errors;
+		SET @warnings_global=@warnings_global+@warnings;
+		SET @rows_deleted_global=@rows_deleted_global+@rows_deleted;
+		SET @rows_inserted_global=@rows_inserted_global+@rows_inserted;
+		SET @rows_updated_global=@rows_updated_global+@rows_updated;
+		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))
+		
+		SET  @data='{}'
+		SET  @data=JSON_MODIFY( @data,'$.N',CONVERT(varchar(10), @imports_fetched))
+		SET  @data=JSON_MODIFY( @data,'$.Errors',CONVERT(varchar(10), @errors))
+		SET  @data=JSON_MODIFY( @data,'$.Warnings',CONVERT(varchar(10), @warnings))	
+		SET  @data=JSON_MODIFY( @data,'$.Deleted',CONVERT(varchar(10), @rows_deleted))
+		SET  @data=JSON_MODIFY( @data,'$.Inserted',CONVERT(varchar(10), @rows_inserted))
+		SET  @data=JSON_MODIFY( @data,'$.Updated',CONVERT(varchar(10), @rows_updated))
+		SET  @data=JSON_MODIFY( @data,'$.DateImportFrom',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_from),126)))
+		SET  @data=JSON_MODIFY( @data,'$.DateImportUntil',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_until),126)))
+		
 
-	CLOSE TAB_CURSOR 
-	DEALLOCATE TAB_CURSOR
+		IF @errors=0 BEGIN 
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+			, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
+		END
+		ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+		, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
+		
+		SET @data= convert(varchar(20),getdate(),120) +' #' + convert(varchar(10),@imports_fetched) + ') import_id=' + convert(varchar(10),@import_id) + ' duration=' + convert(varchar(10),@duration) + ' ' +  @data;
+		SET @output=@output + @data  + '</br>';
+		PRINT @data;
+		
 
-	SET @data=format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3')
-    SET  @summary='{}'
-		set  @summary=JSON_MODIFY( @summary,'$.ImportsFetched',CONVERT(varchar(10), @imports_fetched))
-		set  @summary=JSON_MODIFY( @summary,'$.RowsDeleted',CONVERT(varchar(10), @rows_deleted_global))
-		set  @summary=JSON_MODIFY( @summary,'$.RowsInserted',CONVERT(varchar(10), @rows_inserted_global))
-        set  @summary=JSON_MODIFY( @summary,'$.Errors',CONVERT(varchar(10), @errors_global))
+		/*
+		
+		set @data = left((concat(concat('{"p1":"',@p1,'",'),
+        concat('"p2":"',@p2,'",'),
+        concat('"p3":"',@p3,'",'),
+        concat('"p4":"',@p4,'",'),
+        concat('"p5":"',@p5,'"}')) 
+        ),4000);
+        set @data=JSON_MODIFY( @data,'$.filter',@filter);
+        set @data=JSON_MODIFY( @data,'$.group_by',@date);
+        set @data=JSON_MODIFY( @data,'$.fields_source',@fields_source);
+        set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target);
 		 
-	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
-    , @step='SQL SP FINISH', @duration=@data, @result='Succeeded', @data=@summary;
+		*/
 
-    SET @output=@output + '<br> It took ' + @data + ' sec.'
+    FETCH NEXT FROM TAB_CURSOR 
+    INTO @import_id 
+        ,@activity_id
+        ,@forecast_id
+        ,@p1
+        ,@p2
+        ,@p3
+        ,@p4
+        ,@p5
+        ,@date_import_from
+        ,@date_import_until
+        ,@fields_source
+        ,@fields_target
+        ,@schedule
+        ,@filter
+        ,@source
+        ,@date
+        ,@commands 
+        ,@procedure_name 
+        ,@site_id
+        ,@parent
+    END -- END OF FETCHING IMPORTS
+    CLOSE TAB_CURSOR 
+    DEALLOCATE TAB_CURSOR
+
+	-------------------------------------------------------------------------------------------------------------------------------
+	SET @step= 'SP END';
+	--------------------------------------------------------------------------------------------------
+	IF @imports_fetched=0 BEGIN
+        SET @data= 'No active imports found for ' + @SP + ' SQL SP.';
+        SET @output=@output  + @data + '<br>';
+        PRINT @data; 
+		IF @commands like '%-LOG_WARNING%' BEGIN
+			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+		END
+    END
+    
+    SET  @data='{}'
+	SET  @data=JSON_MODIFY( @data,'$.Imports',CONVERT(varchar(10), @imports_fetched))
+	SET  @data=JSON_MODIFY( @data,'$.Errors',CONVERT(varchar(10), @errors_global))
+	SET  @data=JSON_MODIFY( @data,'$.Warnings',CONVERT(varchar(10), @warnings_global))	
+	SET  @data=JSON_MODIFY( @data,'$.Deleted',CONVERT(varchar(10), @rows_deleted_global))
+	SET  @data=JSON_MODIFY( @data,'$.Inserted',CONVERT(varchar(10), @rows_inserted_global))
+	SET  @data=JSON_MODIFY( @data,'$.Updated',CONVERT(varchar(10), @rows_updated_global))
+
+	SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3'))
+
+    IF @errors_global=0 BEGIN
+		EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+		, @step=@step, @duration=@duration, @result='Succeeded', @data=@data, @value=@warnings_global;
+
+	END
+	ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+		, @step=@step, @duration=@duration, @result='Failed', @data=@data , @value=@errors_global;  
+
+	SET @data = @SP + ' finished. It took ' + convert(varchar(20),@duration) + ' sec.' + @data ; 
+	SET @output=@output + '</br>' + @data + '</br>';
+	PRINT @data;
+
+-- SNIPPET END  *********************************************************
 
     
     DECLARE @version nvarchar(max)='
     <H3>VERSION INFORMATION </H3>
+   	--  VERSION 20230315  <br>
+    --  logging improved, snippets design <br>
+
     -- version 20220711  <br>
     -- scheduling parameter added  <br>
     -- more error handling  <br>
