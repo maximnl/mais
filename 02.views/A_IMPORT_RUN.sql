@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 -- VIEW for running IMPORTs stored procedures
-CREATE OR ALTER       VIEW [dbo].[A_IMPORT_RUN]
+CREATE OR ALTER VIEW [dbo].[A_IMPORT_RUN]
 as
     SELECT I.import_id
      	, case  when isnull(A.[domain],'')>'' then A.[domain] 
@@ -14,7 +14,7 @@ as
         , isnull(ltrim(rtrim(P.app)),'') app
         , isnull(ltrim(rtrim(P.[status])),'') status
         , P.procedure_id
-        , isnull(ltrim(rtrim(P.category)),'') category 
+        , rtrim(ltrim(isnull(P.category,'')))+' '+rtrim(ltrim(isnull(I.category,'')))   as  category 
         , rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands
         , isnull(I.[activity_id],0) activity_id
         , isnull(I.[forecast_id],0) forecast_id
@@ -32,8 +32,9 @@ as
         , case when isnull(I.[fields_source],'') >'' then ltrim(rtrim(I.[fields_source])) else isnull(ltrim(rtrim(P.fields_source)),'value1') end fields_source
         , case when isnull(I.[fields_target],'') >'' then ltrim(rtrim(I.[fields_target])) else isnull(ltrim(rtrim(P.fields_target)),'value1') end fields_target
         , case when isnull(I.[schedule],'')>'' then ltrim(rtrim(I.[schedule])) else ltrim(rtrim(isnull(P.[schedule],''))) end as [schedule]
-        , case when isnull(P.[filter],'')>'' or isnull(I.[filter],'')>'' then ltrim(rtrim(concat(P.[filter], case when isnull(P.[filter],'')>'' and isnull(I.[filter],'')>'' then ' AND ' 
-			else '' end , case when isnull(I.[filter],'')>'' then  concat('(',isnull(ltrim(rtrim(I.[filter])),''),')') end ) ))
+        , case when rtrim(ltrim(isnull(P.[filter],'')))>'' or rtrim(ltrim(isnull(I.[filter],'')))>'' then ltrim(rtrim(concat(P.[filter]
+            , case when rtrim(ltrim(isnull(P.[filter],'')))>'' and rtrim(ltrim(isnull(I.[filter],'')))>'' then ' AND ' 
+			else '' end , case when rtrim(ltrim(isnull(I.[filter],'')))>'' then  concat('(',isnull(ltrim(rtrim(I.[filter])),''),')') end ) ))
 			else '' end [filter]
         , case when isnull(I.source,'') >'' then ltrim(rtrim(I.source)) else ltrim(rtrim(isnull(P.[source],''))) end [source]
         , case when isnull(I.[group_by],'')>'' then ltrim(rtrim(I.[group_by])) else ltrim(rtrim(isnull(P.[group_by],''))) end group_by
@@ -43,10 +44,23 @@ as
         , isnull(ltrim(rtrim(A.resource)),'') resource
         , isnull(ltrim(rtrim(A.channel)),'') channel
         , isnull(ltrim(rtrim(A.segment)),'') segment
+        , isnull(ltrim(rtrim(A.slicer1)),'') slicer1
+        , isnull(ltrim(rtrim(A.slicer2)),'') slicer2
+        , isnull(ltrim(rtrim(A.slicer3)),'') slicer3
         , F.forecast_name as forecast_name
         , I.site_id
         , case when I.active=1 and P.active=1 and A.active=1 and F.active=1  then 1 else 0 end as active
         , case when isnull(I.date_updated,'1900-01-01')>isnull(P.date_updated,'1900-01-01') then I.date_updated else P.date_updated end as date_updated
+        , rtrim(ltrim(isnull(P.version,'')))+' '+rtrim(ltrim(isnull(I.version,'')))   as [version]
+    ,I.[days_back] import_days_back
+    ,I.[days_forward] import_days_forward
+    ,I.[date_import_from] import_date_import_from
+    ,I.[date_import_until] import_date_import_until
+    ,P.[days_back] procedure_days_back
+    ,P.[days_forward] procedure_days_forward
+    ,P.[date_import_from] procedure_date_import_from
+    ,P.[date_import_until] procedure_date_import_until
+
     FROM dbo.[A_IMPORT] I
         inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
         inner join dbo.[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
