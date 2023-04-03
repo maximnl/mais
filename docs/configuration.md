@@ -1,12 +1,16 @@
 # Import configuration
-Import configuration is a generic structure that controls data import from a source to a time serie format in MAIS. The structure has two layers made of transitory parameters to support import of data from any table/view source:
-- Import procedure level - table [A_IMPORT PROCEDURE]. It defines a stored procedure to call and most commonly it sets the data source name. Do not confuse it with the SQL stored procedures. The same SQL stored procedure can be used in multiple import procedures. 
+Import configuration is a generic lyered structure that defines parameteres for importing data to the time series format of MAIS. The parameters have a top - the procedure layer and a bottom - the import layer.  
+
+- The procedure layer - table [A_IMPORT PROCEDURE]. It defines a (stored) procedure or an APP to call, the filter, the date period to import data, scheduling and other parameters. It is convenient to define one or more procedures per data source/table/view. MAIS comes with several predefined stored procedures to cover daily import needs such as an import from a table/view.  
+
+- MAIS has a A_IMPORT_RUN view that combines the layerd parameters such as date_import_from. These parameters are passed into the corresponding stored procedure of the corresponding import during the executions. The parameters can be refined inside the stored procedures or an app.  
+
 - Import level - table [A_IMPORT]. It refines the parameters of the assigned procedure for a specific time serie.
 Import parameters such as [source] can be left empty and they will use [source] from the assigned procedure. Most commonly [filter] parameter will be set as time series will differ by the filter which goes into the [where] clause of the generated SQL. 
 
 All parameters can be written in sql expressions syntax. 
 
-Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS stored procedures directly from data. 
+ 
 ```sql
 
 -- Parameters defined at interface/ SP level / to select and batch run several imports after each other
@@ -47,6 +51,25 @@ Parameters are premerged in the view [A_IMPORT_RUN] and are accessed within MAIS
 
 ## Parameters
 
+THE DATE RANGE PARAMETERS
+These parameters define the date range of the time series to be inserted/updated. In most aggregation scenarios it corresponds with the source date field.
+
+days_back (an integer number of days back versus the current date for relative ranges)
+date_import_from  (a hard date value)
+days_forward (a number of days forward versus the current date)
+date_import_until 
+
+If all parameters are empty the whole data source will be imported. There is a flexibility to control a starting/ending date of the import as relative as absolute date value. The absolute values will be leading and the import layer values will overwrite the procedure layer values.  
+
+
+ Import dates calculations
+ -- version 20230403
+-- improved date_import_from / until calculations with aligned priority
+-- import.import_date_from -> import.days_back -> procedure.import_date_from -> procedure.days_back
+-- idem for the forward date calculations
+
+
+
 ### Commands
 #### -DELTA
 This parameter forces begin and end date of the date range to be adjusted to the source date range. Data will be refreshed only for the range between min and max dates of the source. 
@@ -75,6 +98,8 @@ BEFORE the command:
  ([date],activityid,forecastid,importid,Value1)
  SELECT date,460, 4,4354,H FROM [S_1_W].[A_SOURCE_FILE] 
  WHERE (source='BFC/KRIMP/ZABI') AND date BETWEEN '2022-01-03' AND '2023-01-01';
+ 
+ 
 
 AFTER the command:
 
