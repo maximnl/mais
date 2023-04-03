@@ -7,15 +7,16 @@ GO
 CREATE OR ALTER VIEW [dbo].[A_IMPORT_RUN]
 as
     SELECT I.import_id
-     	, case  when isnull(A.[domain],'')>'' then A.[domain] 
-                when isnull(I.[domain],'')>'' then I.[domain] else P.[domain] end as [domain]     
+     	
+        , A.category as category
+        , A.domain as domain
      	, isnull(ltrim(rtrim(P.[procedure_name])),'') [procedure_name]
         , isnull(ltrim(rtrim(P.[procedure_code])),'') procedure_code
         , isnull(ltrim(rtrim(P.app)),'') app
         , isnull(ltrim(rtrim(P.[status])),'') status
         , P.procedure_id
-        , rtrim(ltrim(isnull(P.category,'')))+' '+rtrim(ltrim(isnull(I.category,'')))   as  category 
-        , rtrim(ltrim(isnull(P.commands,'')))+rtrim(ltrim(isnull(I.commands,'')))   as commands
+        
+        , rtrim(ltrim(isnull(P.commands,'')))+ rtrim(ltrim(isnull(I.commands,'')))   as commands
         , isnull(I.[activity_id],0) activity_id
         , isnull(I.[forecast_id],0) forecast_id
      	, isnull(case when isnull(I.[p1],'')>'' then ltrim(rtrim(I.[p1])) else ltrim(rtrim(P.[p1])) end,'') as [p1]
@@ -25,10 +26,16 @@ as
         , isnull(case when isnull(I.[p5],'')>'' then ltrim(rtrim(I.[p5])) else ltrim(rtrim(P.[p5])) end,'') as [p5]
         , isnull(P.[sort_order],1) *1000+ isnull(A.[sort_order],1) * 100 + isnull(I.[sort_order],1) sort_order
         , isnull(P.description,'') as description
-     	, case when isnull(P.[days_back],0)+isnull(I.[days_back],0) > 0 then dateadd(D,-1* case when isnull(I.[days_back],0)>0 then I.[days_back] else P.[days_back] end ,getdate()) else
-			isnull(I.[date_import_from], isnull(P.date_import_from, '1900-01-01')) end date_import_from
-        , case when isnull(P.[days_forward],0)+isnull(I.[days_forward],0) >0 then dateadd(D, 1 * case when isnull(I.[days_forward],0)>0 then I.[days_forward] else P.[days_forward] end,getdate()) else 
-			isnull(I.[date_import_until],isnull(P.date_import_until, '9999-01-01')) end date_import_until
+     	, case when try_convert(date,I.[date_import_from]) is not null then I.[date_import_from]
+          when try_convert(int, I.[days_back] ) is not null and ltrim(I.[days_back])>'' then dateadd(D,-1 * I.[days_back],getdate()) 
+          when try_convert(date,P.[date_import_from]) is not null then P.[date_import_from]
+          when try_convert(int, P.[days_back] ) is not null and ltrim(P.[days_back])>'' then dateadd(D,-1 * P.[days_back],getdate())
+          else '1900-01-01' end date_import_from
+        , case when try_convert(date,I.[date_import_until]) is not null then I.[date_import_until]
+          when try_convert(int, I.[days_forward] ) is not null and ltrim(I.[days_forward])>'' then dateadd(D, 1 * I.[days_forward],getdate()) 
+          when try_convert(date,P.[date_import_until]) is not null then P.[date_import_until]
+          when try_convert(int, P.[days_forward] ) is not null and ltrim(P.[days_forward])>'' then dateadd(D,1 * P.[days_forward],getdate())
+          else '9999-01-01' end date_import_until
         , case when isnull(I.[fields_source],'') >'' then ltrim(rtrim(I.[fields_source])) else isnull(ltrim(rtrim(P.fields_source)),'value1') end fields_source
         , case when isnull(I.[fields_target],'') >'' then ltrim(rtrim(I.[fields_target])) else isnull(ltrim(rtrim(P.fields_target)),'value1') end fields_target
         , case when isnull(I.[schedule],'')>'' then ltrim(rtrim(I.[schedule])) else ltrim(rtrim(isnull(P.[schedule],''))) end as [schedule]
@@ -60,12 +67,21 @@ as
     ,P.[days_forward] procedure_days_forward
     ,P.[date_import_from] procedure_date_import_from
     ,P.[date_import_until] procedure_date_import_until
-
+    ,I.domain as import_domain
+    ,P.domain as procedure_domain
+    ,I.category as import_category
+    ,P.category as procedure_category
     FROM dbo.[A_IMPORT] I
         inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
         inner join dbo.[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
         inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
     where isnull(I.[activity_id],0)>0 and isnull(I.[forecast_id],0)>0 and I.site_id>0
+
+
+-- version 20230403
+-- improved date_import_from / until calculations with aligned priority
+-- import.import_date_from -> import.days_back -> procedure.import_date_from -> procedure.days_back
+-- idem for the forward date calculations
 
 -- version 20230104
 -- removed active where filter
