@@ -4,7 +4,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 -- VIEW for running IMPORTs stored procedures
-CREATE OR ALTER VIEW [dbo].[A_IMPORT_RUN]
+ALTER   VIEW [dbo].[A_IMPORT_RUN]
 as
     SELECT I.import_id
      	
