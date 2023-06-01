@@ -1,5 +1,4 @@
-USE [Anwb_Rhl]
-GO
+
 /****** Object:  StoredProcedure [dbo].[A_SP_ALERT]    Script Date: 1-6-2023 12:31:57 ******/
 SET ANSI_NULLS OFF
 GO
