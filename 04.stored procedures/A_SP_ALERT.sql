@@ -1,5 +1,3 @@
-
-/****** Object:  StoredProcedure [dbo].[A_SP_ALERT]    Script Date: 1-6-2023 12:31:57 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -58,7 +56,7 @@ BEGIN
 --------------------------------------------------------------------------------------------------
 	SET @step='SQL SP START';
 --------------------------------------------------------------------------------------------------
-	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @step=@step, @data=@commands,@result='Succeeded'
+	EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @step=@step, @data=@commands,@result='Succeeded'
 	SET @start_time     = GETDATE()
 	
 	DECLARE TAB_CURSOR CURSOR  FOR 
@@ -468,11 +466,11 @@ BEGIN
 	SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time,getdate())/1000.0,'N3'))
 
     IF @errors_global=0 BEGIN
-		EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+		EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name 
 		, @step=@step, @duration=@duration, @result='Succeeded', @data=@data, @value=@warnings_global;
 
 	END
-	ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+	ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP,@object_sub=@procedure_name
 		, @step=@step, @duration=@duration, @result='Failed', @data=@data , @value=@errors_global;  
 
 	SET @data = @SP + ' finished. It took ' + convert(varchar(20),@duration) + ' sec.' + @data ; 
@@ -538,3 +536,4 @@ BEGIN
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
+GO
