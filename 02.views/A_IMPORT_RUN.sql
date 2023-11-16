@@ -1,7 +1,12 @@
+ 
+/****** Object:  View [dbo].[A_IMPORT_RUN]    Script Date: 16-11-2023 12:43:13 ******/
 SET ANSI_NULLS ON
 GO
+
 SET QUOTED_IDENTIFIER ON
 GO
+
+
 
 -- VIEW for running IMPORTs stored procedures
 ALTER   VIEW [dbo].[A_IMPORT_RUN]
@@ -26,16 +31,16 @@ as
         , isnull(case when isnull(I.[p5],'')>'' then ltrim(rtrim(I.[p5])) else ltrim(rtrim(P.[p5])) end,'') as [p5]
         , isnull(P.[sort_order],1) *1000+ isnull(A.[sort_order],1) * 100 + isnull(I.[sort_order],1) sort_order
         , isnull(P.description,'') as description
-     	, case when try_convert(date,I.[date_import_from]) is not null then I.[date_import_from]
+     	, try_convert(date,case when try_convert(date,I.[date_import_from]) is not null then I.[date_import_from]
           when try_convert(int, I.[days_back] ) is not null and ltrim(I.[days_back])>'' then dateadd(D,-1 * I.[days_back],getdate()) 
           when try_convert(date,P.[date_import_from]) is not null then P.[date_import_from]
           when try_convert(int, P.[days_back] ) is not null and ltrim(P.[days_back])>'' then dateadd(D,-1 * P.[days_back],getdate())
-          else '1900-01-01' end date_import_from
-        , case when try_convert(date,I.[date_import_until]) is not null then I.[date_import_until]
+          else '1900-01-01' end ) 		  date_import_from
+        , try_convert(date,case when try_convert(date,I.[date_import_until]) is not null then I.[date_import_until]
           when try_convert(int, I.[days_forward] ) is not null and ltrim(I.[days_forward])>'' then dateadd(D, 1 * I.[days_forward],getdate()) 
           when try_convert(date,P.[date_import_until]) is not null then P.[date_import_until]
           when try_convert(int, P.[days_forward] ) is not null and ltrim(P.[days_forward])>'' then dateadd(D,1 * P.[days_forward],getdate())
-          else '9999-01-01' end date_import_until
+          else '9999-01-01' end) date_import_until
         , case when isnull(I.[fields_source],'') >'' then ltrim(rtrim(I.[fields_source])) else isnull(ltrim(rtrim(P.fields_source)),'value1') end fields_source
         , case when isnull(I.[fields_target],'') >'' then ltrim(rtrim(I.[fields_target])) else isnull(ltrim(rtrim(P.fields_target)),'value1') end fields_target
         , case when isnull(I.[schedule],'')>'' then ltrim(rtrim(I.[schedule])) else ltrim(rtrim(isnull(P.[schedule],''))) end as [schedule]
@@ -71,13 +76,13 @@ as
     ,P.domain as procedure_domain
     ,I.category as import_category
     ,P.category as procedure_category
-    FROM dbo.[A_IMPORT] I
-        inner join dbo.[A_IMPORT_PROCEDURE] P on I.procedure_id=P.procedure_id
-        inner join dbo.[A_DIM_ACTIVITY] A on I.activity_id=A.activity_id
-        inner join dbo.[A_DIM_FORECAST] F on I.forecast_id=F.forecast_id
+    FROM dbo.[A_IMPORT] I WITH (NOLOCK) 
+        inner join dbo.[A_IMPORT_PROCEDURE] P WITH (NOLOCK)  on I.procedure_id=P.procedure_id
+        inner join dbo.[A_DIM_ACTIVITY] A WITH (NOLOCK)  on I.activity_id=A.activity_id
+        inner join dbo.[A_DIM_FORECAST] F WITH (NOLOCK)  on I.forecast_id=F.forecast_id
     where isnull(I.[activity_id],0)>0 and isnull(I.[forecast_id],0)>0 and I.site_id>0
 
-
+-- version 20231116 date_import_from/until with time stamp fix (extra date conversions were added)
 -- version 20230403
 -- improved date_import_from / until calculations with aligned priority
 -- import.import_date_from -> import.days_back -> procedure.import_date_from -> procedure.days_back
@@ -107,3 +112,5 @@ as
 
 
 GO
+
+
