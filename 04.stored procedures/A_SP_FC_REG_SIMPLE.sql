@@ -284,13 +284,7 @@ BEGIN
 		--------------------------------------------------------------------------------------------------------------------------	
  		 
 		SET @sqlCommand = '
-    with D as 
-    (select date, sum(value1) value1 from [A_FACT_DAY] 
-    where ' + @filter + '  
-    and date between dateadd(day,-' + convert(varchar(max),@timelag_max) +  ',''' + convert(char(10),@date_import_from,126)  + ''') and ''' + convert(char(10),@date_import_until,126)  + ''' 
-    group by date
-    )
-    , T as (
+    with  T as (
     select date 
     , case when day_week=1 then 1 else 0 end d1
     , case when day_week=2 then 1 else 0 end d2
@@ -299,16 +293,22 @@ BEGIN
     , case when day_week=5 then 1 else 0 end d5
     , case when day_week=6 then 1 else 0 end d6
     from [A_TIME_DATE]  
-    where date between ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''  
+    where date between dateadd(day,-' + convert(varchar(max),@timelag_max) +  ',''' + convert(char(10),@date_import_from,126)  + ''') and ''' + convert(char(10),@date_import_until,126)  + ''' 
     ),
-
+    D as 
+    (select T.[date], sum(isnull(value1,0)) value1 
+    from T left join [A_FACT_DAY] on T.[date]=[A_FACT_DAY].[date]
+    where ' + @filter + '  
+    group by T.[date]
+    )
+    ,
     D_CAT as (
     select date
-    , LOG(1+isnull(value1,0)) cat0 
-    , LOG(1+sum(isnull(value1,0)) OVER(ORDER BY D.Date     ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING ) ) as cat1
-    , LOG(1+sum(isnull(value1,0)) OVER(ORDER BY D.Date     ROWS BETWEEN 2 PRECEDING AND 2 PRECEDING ) ) as cat2
-    , LOG(1+sum(isnull(value1,0)) OVER(ORDER BY D.Date    ROWS BETWEEN 6 PRECEDING AND 3 PRECEDING )  ) as cat3
-    , LOG(1+sum(isnull(value1,0)) OVER(ORDER BY D.Date    ROWS BETWEEN 13 PRECEDING AND 7 PRECEDING ) ) as cat4
+    , LOG(1+value1) cat0 
+    , LOG(1+sum(value1) OVER(ORDER BY D.Date     ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING ) ) as cat1
+    , LOG(1+sum(value1) OVER(ORDER BY D.Date     ROWS BETWEEN 2 PRECEDING AND 2 PRECEDING ) ) as cat2
+    , LOG(1+sum(value1) OVER(ORDER BY D.Date    ROWS BETWEEN 6 PRECEDING AND 3 PRECEDING )  ) as cat3
+    , LOG(1+sum(value1) OVER(ORDER BY D.Date    ROWS BETWEEN 13 PRECEDING AND 7 PRECEDING ) ) as cat4
     from D 
     )
 
@@ -344,7 +344,9 @@ BEGIN
     INSERT INTO '+ @fact_day 
     +' ([date],activity_id,forecast_id, import_id,' + @fields_target + ',site_id) 
     select date,' +  convert(varchar(max),@activity_id)  
-    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_target + ',' + convert(nvarchar(max),@site_id) + ' FROM RES;'       
+    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_target + ',' + convert(nvarchar(max),@site_id) + ' FROM RES
+    WHERE [date] between ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''  
+    ;'       
 					
 -- SNIPPET QUERY EXECUTE START ********************************************************
 		SET @start_time_step     = GETDATE();
