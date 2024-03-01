@@ -1,3 +1,5 @@
+ 
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 1-3-2024 16:36:22 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -145,16 +147,13 @@ BEGIN
 		SET @step= 'SCHEDULE TEST';
 		-------------------------------------------------------
 		SET @start_time_step     = GETDATE()
-		IF @schedule>'' BEGIN TRY
+		IF @schedule>'' and @commands not like '%-NOSCHEDUL%'     BEGIN TRY
             SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' + @schedule + ' THEN ''1'' ELSE ''0'' END'
             EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
         END TRY
 		BEGIN CATCH  
-            SET @errors=@errors+1;
-			SET @data=dbo.[A_FN_SYS_ErrorJson]() 
-            SET @output=@output+ '<b>error information ' + @data+'</b></br>' + @sqlCommand + '</br></br>';
-            PRINT @data; PRINT @sqlCommand ; 
-			SET @data=@data + @sqlCommand;
+            SET @errors=@errors+1; SET @data=dbo.[A_FN_SYS_ErrorJson](); SET @output=@output+ '<b>error information ' + @data+'</b></br>' + @sqlCommand + '</br></br>';
+            PRINT @data; PRINT @sqlCommand ; SET @data=@data + @sqlCommand;
             EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
         END CATCH;   
 
@@ -209,6 +208,7 @@ BEGIN
 		BEGIN TRY
 				IF @p like '{_%}' BEGIN
 					IF @p1 like '{_%}' SELECT @p1 = JSON_MODIFY(@p1, CONCAT(N'$.', [Key]), value) FROM OPENJSON(@p) WHERE ISJSON(@p) > 0
+					else SET @p1=@p 
 				END
 			 
 				IF @p1 like '{_%}' BEGIN  
@@ -218,7 +218,9 @@ BEGIN
 					SET @s = (select isnull(JSON_VALUE(@p1,'$.source_import_id_field'),'')); IF @s>'' SET @source_import_id_field=@s;
 					SET @d=(select try_convert(date,JSON_VALUE(@p1,'$.date_import_from'))); IF @d is not null SET @date_import_from=@d;
 				 	SET @d=(select try_convert(date,JSON_VALUE(@p1,'$.date_import_until'))); IF @d is not null SET @date_import_until=@d;
-					SET @i=(select try_convert(int,JSON_VALUE(@p1,'$.intraday_duration'))); IF @i>0 SET @intraday_duration=@i;					
+					SET @i=(select try_convert(int,JSON_VALUE(@p1,'$.intraday_duration'))); IF @i>0 SET @intraday_duration=@i;		
+				  print @p1;
+				  print @date_import_from;
 				END	 	 
 		 
 		END TRY
@@ -234,7 +236,7 @@ BEGIN
 		--------------------------------------------------------------------------------	
 		SET @step='DELTA DETECTION'
 		----------------------------------------------------------------------------------------------------------------------
-        IF (@commands NOT like '%-NODELTA%' OR @commands like '%-FORCEDELTA%') AND (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
+        IF (@commands NOT like '%-NODELTA%' OR @commands like '%-FORCEDELTA%') AND (@on_schedule=1 ) BEGIN
 			DECLARE @dates varchar(30)
 			SET @sqlCommand = 'select @dates = try_convert(char(10),try_convert(date,isnull(min(' + @date 
 				+ '),''9999-01-01'')),126) + try_convert(char(10),try_convert(date,isnull(max(' + @date 
@@ -338,11 +340,11 @@ IF @commands  not like '%-NODAY%' BEGIN
         SET @step='INSERT DAY';
 		--------------------------------------------------------------------------------------------------------------------------	
 		SET @sqlCommand = 'INSERT INTO '+ @fact_day 
-        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id)' + 
+        +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id, date_updated)' + 
         ' SELECT ' + @date + ',' +  convert(varchar(10),@activity_id)  
    		+ ', ' +  convert(varchar(10),@forecast_id) + ','+ convert(varchar(10),@import_id)
-   		+ ',' + @fields_source +','+ convert(varchar(10),@site_id) +
- 		' FROM '+ @day_source +' WHERE ' + @filter  
+   		+ ',' + @fields_source +','+ convert(varchar(10),@site_id) + ', getdate() '
+ 		+ ' FROM '+ @day_source +' WHERE ' + @filter  
 		+ ' AND ' + @date + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';';
 		
 -- SNIPPET QUERY EXECUTE START ********************************************************
@@ -530,11 +532,11 @@ IF @commands  not like '%-NODAY%' BEGIN
  		IF @commands not like '%-NOGROUPBY%' OR @commands like  '%-SUMFIELDS%' BEGIN SET @groupby = concat(' GROUP BY ', @date, ',',@intraday_interval_id) END ELSE SET @groupby=''
         
 		SET @sqlCommand = 'INSERT INTO '+ @fact_intraday 
-        +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id)'
+        +' ([date], activity_id, forecast_id, import_id, interval_id, duration_min,' + @fields_target + ',site_id, date_updated)'
         +' SELECT ' + @date + ',' +  convert(varchar(10),@activity_id)  
    		+ ',' +  convert(varchar(10),@forecast_id) + ','+ convert(varchar(10),@import_id)
    		+ ',' + @intraday_interval_id + ', '+ convert(varchar(10),@intraday_duration) + ',' + @fields_source 
-        + ',' + convert(varchar(10),@site_id) 
+        + ',' + convert(varchar(10),@site_id) + ', getdate() '
  		+ ' FROM '+ @intraday_source + '   WHERE ' + @filter  
 		+ ' AND ' + @date + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' 
         + @groupby +';';
@@ -704,6 +706,13 @@ IF @commands  not like '%-NODAY%' BEGIN
 
     DECLARE @version nvarchar(max)='
     <br><i>VERSION INFORMATION </i>
+	-- VERSION 20240301 <br>
+	-- @p parameter accepts additional parameters in json format<br>
+	-- 1. date_import_from<br>
+	-- 2. date_import_until<br>
+	-- 3. source_import_id_field<br>
+	-- 4. intraday_duration<br>
+	--  Example: exec [dbo].[A_SP_IMPORT] @site_id=1, @procedure_name=''SUM_DAY_VIEW'', @commands=''-NO_SCHEDULE -OUTPUT'',@p=''{"date_import_from":"2023-01-01"}''<br><br>
     --  VERSION 20230404  <br>
     --  new command -NODAY added, for skipping fact_day update part
 	--  VERSION 20230317  <br>
@@ -763,7 +772,8 @@ IF @commands  not like '%-NODAY%' BEGIN
     <br>@session_id nvarchar(50)  = null -- session id for loging, keep empty for an autogenerated uid.
     <br>@procedure_name nvarchar(200) -- the procedure name or an app name to run, use % to broaden the selection
     <br>@site_id int =0 -- site to run
-	<br> p SP parameter in json format {"source_import_id_field":"import_id","date_import_from":"2021-01-01","date_import_until":"2021-12-31"} <br>
+	<br> p SP parameters in json format {"source_import_id_field":"import_id","date_import_from":"2021-01-01","date_import_until":"2021-12-31"} <br>
+	Example: exec [dbo].[A_SP_IMPORT] @site_id=1, @procedure_name=''SUM_DAY_VIEW'', @commands=''-NO_SCHEDULE -OUTPUT'',@p=''{"date_import_from":"2023-01-01"}'' <br>
 	--  Import p1 is merged with p
 	<br>source_import_id_field - if specified, records of the source table will be updated with the all imports accessing those records 
 	<br>date_import_from overwrite import configuration
@@ -797,4 +807,3 @@ IF @commands  not like '%-NODAY%' BEGIN
 
 END
 
-GO
