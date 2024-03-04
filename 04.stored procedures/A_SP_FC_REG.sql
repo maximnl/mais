@@ -361,7 +361,8 @@ BEGIN
     , sum(CASE WHEN D_LOG.cat=3 then EXP(P.offset + D_LOG.val_log*P.inc + T.d1*P.d1+T.d2*P.d2+ T.d3*P.d3+T.d4*P.d4+T.d5*P.d5+T.d6*P.d6)-P.f ELSE 0 END) value5
     , sum(CASE WHEN D_LOG.cat=4 then EXP(P.offset + D_LOG.val_log*P.inc + T.d1*P.d1+T.d2*P.d2+ T.d3*P.d3+T.d4*P.d4+T.d5*P.d5+T.d6*P.d6)-P.f ELSE 0 END) value6
     , null value7
-    , null value8
+    , sum(EXP(P.offset + D_LOG.val_log*P.inc + T.d1*P.d1+T.d2*P.d2+ T.d3*P.d3+T.d4*P.d4+T.d5*P.d5+T.d6*P.d6)-P.f) 
+    - sum(CASE WHEN D_LOG.cat=0 then EXP(P.offset + D_LOG.val_log*P.inc + T.d1*P.d1+T.d2*P.d2+ T.d3*P.d3+T.d4*P.d4+T.d5*P.d5+T.d6*P.d6)-P.f ELSE 0 END) 	as value8
     , null value9
     , null value10
     from D_LOG inner join T on D_LOG.date=T.date
@@ -370,7 +371,7 @@ BEGIN
     )
 
     INSERT INTO '+ @fact_day 
-    +' ([date],activity_id,forecast_id, import_id,' + @fields_target + ',site_id) 
+    +' ([date],activity_id,forecast_id, import_id,' + @fields_source + ',site_id) 
     select date,' +  convert(varchar(max),@activity_id)  
     + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_target + ',' + convert(nvarchar(max),@site_id) + ' FROM RES;'       
 					
@@ -537,9 +538,16 @@ BEGIN
 
 
     DECLARE @version nvarchar(max)='
+     <H3>VERSION INFORMATION </H3>
+   	VERSION 20240304  <br>
+    <p>Fields source parameter accepts value1, value2,...,value10.
+    Extra calculations can be made eg. value1,value2,value1-value2.
+    Fields target value1,value2,value3
+    
+    </p>
     <H3>VERSION INFORMATION </H3>
-   	--  VERSION 20230315  <br>
-    --  logging improved, snippets design <br></br>
+   	VERSION 20230315  <br>
+    logging improved, snippets design <br></br>
      
 '
     IF @commands like '%-VERSION%'  BEGIN SET @output = @output + @version; PRINT @version; END 
