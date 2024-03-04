@@ -371,9 +371,9 @@ BEGIN
     )
 
     INSERT INTO '+ @fact_day 
-    +' ([date],activity_id,forecast_id, import_id,' + @fields_source + ',site_id) 
+    +' ([date],activity_id,forecast_id, import_id,' + @fields_target + ',site_id) 
     select date,' +  convert(varchar(max),@activity_id)  
-    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_target + ',' + convert(nvarchar(max),@site_id) + ' FROM RES;'       
+    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_source + ',' + convert(nvarchar(max),@site_id) + ' FROM RES;'       
 					
 -- SNIPPET QUERY EXECUTE START ********************************************************
 		SET @start_time_step     = GETDATE();
