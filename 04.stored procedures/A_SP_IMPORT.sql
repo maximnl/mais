@@ -1,5 +1,3 @@
- 
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 1-3-2024 16:36:22 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -604,6 +602,8 @@ IF @commands  not like '%-NODAY%' BEGIN
 		SET @rows_inserted_global=@rows_inserted_global+@rows_inserted;
 		SET @rows_updated_global=@rows_updated_global+@rows_updated;
 		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))
+
+        
 		
 		SET  @data='{}'
 		SET  @data=JSON_MODIFY( @data,'$.N',CONVERT(varchar(10), @imports_fetched))
@@ -615,14 +615,15 @@ IF @commands  not like '%-NODAY%' BEGIN
 		SET  @data=JSON_MODIFY( @data,'$.DateImportFrom',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_from),126)))
 		SET  @data=JSON_MODIFY( @data,'$.DateImportUntil',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_until),126)))
 		
+        IF @commands like '%-LOG_IMPORT%' BEGIN
+            IF @errors=0 BEGIN 
+                EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+                , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
+            END
+            ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+            , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
+        END -- log imports
 
-		IF @errors=0 BEGIN 
-			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-			, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
-		END
-		ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-		, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
-		
 		SET @data= convert(varchar(20),getdate(),120) +' #' + convert(varchar(10),@imports_fetched) + ') import_id=' + convert(varchar(10),@import_id) + ' duration=' + convert(varchar(10),@duration) + ' ' +  @data;
 		SET @output=@output + @data  + '</br>';
 		PRINT @data;
@@ -793,6 +794,7 @@ IF @commands  not like '%-NODAY%' BEGIN
     <tr><td>-LOG_ROWCOUNT   </td><td>Logs a number of rows affected after all executions to A_SYS_LOG.</td></tr>
     <tr><td>-LOG_QUERY      </td><td>Logs  queries.</td></tr>
 	<tr><td>-LOG_WARNING    </td><td>Logs  warnings.</td></tr>
+	<tr><td>-LOG_IMPORTS    </td><td>Logs import stats and parameters.</td></tr>
     <tr><td>-NOSCHEDULE     </td><td>Supress scheduling if any and force queries execution.</td></tr>
 	<tr><td>-OUTPUT			</td><td>Generate procedure log output in html format for calls from the applications.</td></tr>
     <tr><td>-VERSION        </td><td>Outputs the version information.</td></tr>
@@ -806,4 +808,4 @@ IF @commands  not like '%-NODAY%' BEGIN
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
-
+GO
