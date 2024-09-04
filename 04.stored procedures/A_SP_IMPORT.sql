@@ -1,3 +1,6 @@
+USE [Anwb_Rhl]
+GO
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 4-9-2024 11:08:56 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -601,9 +604,7 @@ IF @commands  not like '%-NODAY%' BEGIN
 		SET @rows_deleted_global=@rows_deleted_global+@rows_deleted;
 		SET @rows_inserted_global=@rows_inserted_global+@rows_inserted;
 		SET @rows_updated_global=@rows_updated_global+@rows_updated;
-		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))
-
-        
+		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))    
 		
 		SET  @data='{}'
 		SET  @data=JSON_MODIFY( @data,'$.N',CONVERT(varchar(10), @imports_fetched))
@@ -613,17 +614,16 @@ IF @commands  not like '%-NODAY%' BEGIN
 		SET  @data=JSON_MODIFY( @data,'$.Inserted',CONVERT(varchar(10), @rows_inserted))
 		SET  @data=JSON_MODIFY( @data,'$.Updated',CONVERT(varchar(10), @rows_updated))
 		SET  @data=JSON_MODIFY( @data,'$.DateImportFrom',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_from),126)))
-		SET  @data=JSON_MODIFY( @data,'$.DateImportUntil',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_until),126)))
-		
-        IF @commands like '%-LOG_IMPORT%' BEGIN
-            IF @errors=0 BEGIN 
-                EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-                , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
-            END
-            ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-            , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
-        END -- log imports
-
+		SET  @data=JSON_MODIFY( @data,'$.DateImportUntil',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_until),126)))	
+ 
+        IF @commands like '%-LOG_IMPORT%' AND @errors=0 BEGIN 
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+            , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
+        END
+        IF @errors>0  BEGIN   EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+        , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
+		END
+ 
 		SET @data= convert(varchar(20),getdate(),120) +' #' + convert(varchar(10),@imports_fetched) + ') import_id=' + convert(varchar(10),@import_id) + ' duration=' + convert(varchar(10),@duration) + ' ' +  @data;
 		SET @output=@output + @data  + '</br>';
 		PRINT @data;
@@ -808,4 +808,3 @@ IF @commands  not like '%-NODAY%' BEGIN
     IF @commands like '%-OUTPUT%'  select @output as SQL_OUTPUT
 
 END
-GO
