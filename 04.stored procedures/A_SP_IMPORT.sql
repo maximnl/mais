@@ -1,6 +1,5 @@
-USE [Anwb_Rhl]
-GO
-/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 4-9-2024 11:08:56 ******/
+
+/****** Object:  StoredProcedure [dbo].[A_SP_IMPORT]    Script Date: 30-9-2024 18:01:16 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -9,7 +8,7 @@ GO
 -- generic import procedure for importing source data into A_FACT_DAY and A_FACT_INTRADAY time series tables
 -- option to update the source table records with the import_id according to import where conditions
 
-ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
+CREATE OR ALTER   PROCEDURE [dbo].[A_SP_IMPORT_DEV]
 -- SP Parameters defined at interface/ SP level / to select and batch run several imports after each other
  @activity_id int = 0 -- run imports for an activity_id
 ,@forecast_id int = 0 -- run imports for a forecast_id
@@ -274,6 +273,81 @@ BEGIN
 				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data;   
 			END
 		END
+		
+		--------------------------------------------------------------------------------------------------------------------------    
+		SET @step = 'UPDATE SOURCE IMPORT_ID';
+		--------------------------------------------------------------------------------------------------------------------------
+		
+		SET @rows_updated=0;    
+        IF @source_import_id_field>'' or  @commands like '%-SOURCE_FILTER_IMPORT%'  BEGIN
+			-- by forcing filter, source_import_id field is required . if not set , set to default; 
+			if @source_import_id_field='' or @source_import_id_field is null 
+			BEGIN	
+				SET @source_import_id_field= 'import_id'; 
+				IF @commands like '%-LOG_WARNING%' BEGIN
+				SET @data='Warning: Source import_id filter is forced but the parameter source_import_id_field was not speficied. Setting default filter on import_id field.'
+				PRINT @data; SET @output=@output+'<b>' + @data + '</b><br>';  
+				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data;   
+			END
+			END
+            SET @sqlCommand = 'UPDATE '+ @day_source 
+            + ' SET ' + @source_import_id_field + '=' + convert(varchar(10),@import_id) 
+   		    + ' WHERE ' + @filter  
+		    + ' AND ' + @date + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' 
+			+ CASE WHEN @commands like '%-SOURCE_UPDATE_NULL%' then ' AND ' + @source_import_id_field + ' is null' else '' END
+			;   
+			
+-- SNIPPET QUERY EXECUTE START ********************************************************
+			SET @start_time_step     = GETDATE();
+			SET @rows=0;
+			IF @commands like '%-LOG_QUER%' BEGIN
+				SET @data = @step +  ' QUERY'; 
+				SET @output=@output + @data + '<br>'+@sqlCommand+'<br><br>';  			 
+				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Debug', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+				, @object_id=@import_id, @step=@step, @data=@sqlCommand; 
+				PRINT @data; PRINT @sqlCommand;
+			END
+         
+			IF @commands not like '%-PRINT%' AND  @date_import_until>=@date_import_from BEGIN TRY
+				IF @errors=0 BEGIN 
+					IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
+						EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;				
+					
+						SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_step,getdate())/1000.0,'N3'))
+						IF @commands like '%-LOG_ROWCOUNT%' BEGIN
+							EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @duration=@duration
+							, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step,@data=@sqlCommand, @value=@rows;
+							SET @data=@step + ' query executed. import_id=' + convert(varchar(20),@import_id) + '. Total records ' + convert(varchar(10),@rows);
+							SET @output=@output + @data +  '<br>';
+							PRINT @data;
+						END
+					END
+					ELSE BEGIN		-- not on schedule, no execution		
+						SET @warnings=@warnings+1;
+						IF @commands like '%-LOG_WARNING%' BEGIN
+							SET @data = 'WARNING: ' + @step + ' query was not executed due to the scheduling parameter.';				
+							PRINT @data;
+							EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+							SET @output=@output+'<b>' + @data +'</b> <br>';						
+						END
+					END
+				END           
+ 			END TRY
+ 			BEGIN CATCH  
+				SET @errors=@errors+1;
+				SET @data=dbo.[A_FN_SYS_ErrorJson]();
+				SET @data = @data + 'ERROR: ' +  'import_id=' + convert(varchar(10),@import_id) + ' STEP '  + @step;
+				SET @output=@output+ '<b>' + @data+'</b></br>' + @sqlCommand + '</br></br>';
+				PRINT @data; PRINT @sqlCommand ; 
+				SET @data=@data + @sqlCommand;
+				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
+			END CATCH;   
+
+-- SNIPPET QUERY EXECUTE END  *********************************************************
+
+			SET @rows_updated=@rows;
+        END --  IF @source_import_id_field>'' 
+
 
 IF @commands  not like '%-NODAY%' BEGIN  
 
@@ -345,7 +419,8 @@ IF @commands  not like '%-NODAY%' BEGIN
         ' SELECT ' + @date + ',' +  convert(varchar(10),@activity_id)  
    		+ ', ' +  convert(varchar(10),@forecast_id) + ','+ convert(varchar(10),@import_id)
    		+ ',' + @fields_source +','+ convert(varchar(10),@site_id) + ', getdate() '
- 		+ ' FROM '+ @day_source +' WHERE ' + @filter  
+ 		+ ' FROM '+ @day_source +' WHERE ' 
+		+ CASE WHEN @commands like '%-SOURCE_FILTER_IMPORT%' then @source_import_id_field + '=' + convert(varchar(10),@import_id) else @filter END 
 		+ ' AND ' + @date + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' + @groupby +';';
 		
 -- SNIPPET QUERY EXECUTE START ********************************************************
@@ -399,67 +474,6 @@ IF @commands  not like '%-NODAY%' BEGIN
 		SET @rows_inserted=@rows;        
     END -- CHECK -NODAY NEGATIVE
 
-		--------------------------------------------------------------------------------------------------------------------------    
-		SET @step = 'UPDATE SOURCE IMPORT_ID';
-		--------------------------------------------------------------------------------------------------------------------------
-		
-		SET @rows_updated=0;    
-        IF @source_import_id_field>'' BEGIN
-            SET @sqlCommand = 'UPDATE '+ @day_source 
-            + ' SET ' + @source_import_id_field + '=' + convert(varchar(10),@import_id) 
-   		    + ' WHERE ' + @filter  
-		    + ' AND ' + @date + ' BETWEEN ''' + convert(char(10),@date_import_from,126)  + ''' AND ''' + convert(char(10),@date_import_until,126) + '''' +';';   
-			
--- SNIPPET QUERY EXECUTE START ********************************************************
-			SET @start_time_step     = GETDATE();
-			SET @rows=0;
-			IF @commands like '%-LOG_QUER%' BEGIN
-				SET @data = @step +  ' QUERY'; 
-				SET @output=@output + @data + '<br>'+@sqlCommand+'<br><br>';  			 
-				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Debug', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-				, @object_id=@import_id, @step=@step, @data=@sqlCommand; 
-				PRINT @data; PRINT @sqlCommand;
-			END
-         
-			IF @commands not like '%-PRINT%' AND  @date_import_until>=@date_import_from BEGIN TRY
-				IF @errors=0 BEGIN 
-					IF (@on_schedule=1 OR @commands like '%-NOSCHEDUL%' ) BEGIN
-						EXEC( @sqlCommand); SET @rows= @@ROWCOUNT;				
-					
-						SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_step,getdate())/1000.0,'N3'))
-						IF @commands like '%-LOG_ROWCOUNT%' BEGIN
-							EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @duration=@duration
-							, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step,@data=@sqlCommand, @value=@rows;
-							SET @data=@step + ' query executed. import_id=' + convert(varchar(20),@import_id) + '. Total records ' + convert(varchar(10),@rows);
-							SET @output=@output + @data +  '<br>';
-							PRINT @data;
-						END
-					END
-					ELSE BEGIN		-- not on schedule, no execution		
-						SET @warnings=@warnings+1;
-						IF @commands like '%-LOG_WARNING%' BEGIN
-							SET @data = 'WARNING: ' + @step + ' query was not executed due to the scheduling parameter.';				
-							PRINT @data;
-							EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Warning', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
-							SET @output=@output+'<b>' + @data +'</b> <br>';						
-						END
-					END
-				END           
- 			END TRY
- 			BEGIN CATCH  
-				SET @errors=@errors+1;
-				SET @data=dbo.[A_FN_SYS_ErrorJson]();
-				SET @data = @data + 'ERROR: ' +  'import_id=' + convert(varchar(10),@import_id) + ' STEP '  + @step;
-				SET @output=@output+ '<b>' + @data+'</b></br>' + @sqlCommand + '</br></br>';
-				PRINT @data; PRINT @sqlCommand ; 
-				SET @data=@data + @sqlCommand;
-				EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name, @object_id=@import_id, @step=@step, @data=@data; 
-			END CATCH;   
-
--- SNIPPET QUERY EXECUTE END  *********************************************************
-
-			SET @rows_updated=@rows;
-        END --  IF @source_import_id_field>'' 
 
 	----------------------------------------------------------------------------------------------------------------------
 	--  PROCESS INTRADAY
@@ -693,10 +707,10 @@ IF @commands  not like '%-NODAY%' BEGIN
 
     IF @errors_global=0 BEGIN
 		EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
-		, @step=@step, @duration=@duration, @result='Succeeded', @data=@data, @value=@warnings_global;
+		, @step=@step, @duration=@duration, @result='Succeeded', @data=@data, @value=@warnings_global, @object_sub=@procedure_name;
 
 	END
-	ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP
+	ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @session=@session_id, @site = @site_id, @object=@SP,@object_sub=@procedure_name
 		, @step=@step, @duration=@duration, @result='Failed', @data=@data , @value=@errors_global;  
 
 	SET @data = @SP + ' finished. It took ' + convert(varchar(20),@duration) + ' sec.' + @data ; 
@@ -799,6 +813,10 @@ IF @commands  not like '%-NODAY%' BEGIN
 	<tr><td>-OUTPUT			</td><td>Generate procedure log output in html format for calls from the applications.</td></tr>
     <tr><td>-VERSION        </td><td>Outputs the version information.</td></tr>
     <tr><td>-HELP           </td><td>Outputs help information.</td></tr>
+	<tr><td>-SOURCE_UPDATE_NULL     </td><td>Updates source import_id field <b>ONLY<b> if it is NULL  </td></tr>
+	<tr><td>-SOURCE_FILTER_IMPORT</td><td>Overwrite default filter by import_id field on sources with import_id field. Import_id is updated prior to the aggregations. </td></tr>
+	
+	
 	
     <tr><td> </td><td></td></tr>
     </table>
