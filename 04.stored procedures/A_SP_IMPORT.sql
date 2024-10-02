@@ -8,7 +8,7 @@ GO
 -- generic import procedure for importing source data into A_FACT_DAY and A_FACT_INTRADAY time series tables
 -- option to update the source table records with the import_id according to import where conditions
 
-CREATE OR ALTER   PROCEDURE [dbo].[A_SP_IMPORT_DEV]
+CREATE OR ALTER   PROCEDURE [dbo].[A_SP_IMPORT]
 -- SP Parameters defined at interface/ SP level / to select and batch run several imports after each other
  @activity_id int = 0 -- run imports for an activity_id
 ,@forecast_id int = 0 -- run imports for a forecast_id
