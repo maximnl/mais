@@ -1,5 +1,5 @@
  
-/****** Object:  StoredProcedure [dbo].[A_SP_FC_CORRELATION]    Script Date: 18-3-2023 11:00:32 ******/
+/****** Object:  StoredProcedure [dbo].[A_SP_FC_CORRELATION]    Script Date: 24-10-2024 17:33:53 ******/
 SET ANSI_NULLS OFF
 GO
 SET QUOTED_IDENTIFIER ON
@@ -142,7 +142,7 @@ BEGIN
 		SET @step= 'SCHEDULE TEST';
 		-------------------------------------------------------
 		SET @start_time_step     = GETDATE()
-		IF @schedule>'' BEGIN TRY
+		IF @schedule>''  AND ( @commands not like '%-NOSCHEDUL%' )   BEGIN TRY
             SET @sqlCommand = N'SELECT @on_schedule =  CASE WHEN ' + @schedule + ' THEN ''1'' ELSE ''0'' END'
             EXEC sp_executesql @sqlCommand, N'@on_schedule bit OUTPUT', @on_schedule=@on_schedule OUTPUT
         END TRY
@@ -353,16 +353,30 @@ BEGIN
         , R1 as (
         /* join forecast with lag historical ratios */ 
         SELECT   F1.timekey, R1.actual1, R1.ACT_value1 , R1.REF_value1, F1.value1 forecast
-        ,R1.ratio1 f1
-        ,R5.ratio1 as f5
-        ,R52.ratio1 as f52
-        , (isnull(F1.value1*R1.ratio1,0) + isnull(F1.value1*R5.ratio1,0) + isnull(F1.value1*R52.ratio1,0) )
-        / (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) f
+      --  ,R1.ratio1 f1
+      --  ,R5.ratio1 as f5
+      --  ,R52.ratio1 as f52
+	--	,R104.ratio1 as f104
+	--	,R156.ratio1 as f156
+        , (5.0*isnull(F1.value1*R1.ratio1,0) + 4.0*isnull(F1.value1*R5.ratio1,0) + 3.0*isnull(F1.value1*R52.ratio1,0)  + 2.0*isnull(F1.value1*R104.ratio1,0) + isnull(F1.value1*R156.ratio1,0) )
+        / (case when R1.ratio1 is not null then 5 else 0 end 
+		+ case when R5.ratio1 is not null then 4 else 0 end 
+		+ case when R52.ratio1 is not null then 3 else 0 end 
+		+ case when R104.ratio1 is not null then 2 else 0  end
+		+ case when R156.ratio1 is not null then 1 else 0  end ) 
+		as f
         FROM F1
         left join R as R1 on F1.timekey=R1.timekey+1 
         left join R as R5 on F1.timekey=R5.timekey+5
         left join R as R52 on F1.timekey=R52.timekey+52
-        WHERE (case when R1.ratio1 is not null then 1 else 0 end + case when R5.ratio1 is not null then 1 else 0 end + case when R52.ratio1 is not null then 1 else 0 end ) >0
+		left join R as R104 on F1.timekey=R104.timekey+104
+		left join R as R156 on F1.timekey=R156.timekey+156
+        WHERE (case when R1.ratio1 is not null then 1 else 0 end 
+		+ case when R5.ratio1 is not null then 1 else 0 end 
+		+ case when R52.ratio1 is not null then 1 else 0 end 
+		+ case when R104.ratio1 is not null then 1 else 0  end
+		+ case when R156.ratio1 is not null then 1 else 0  end
+		) >0
         )  
         INSERT INTO '+ @fact_day 
                 +' ([date],activity_id,forecast_id,import_id,' + @fields_target + ',site_id,date_updated) '+
@@ -427,7 +441,7 @@ BEGIN
 		
 
 -- SNIPPET END PROCEDURE ********************************************************
-		--------------------------------------------------------------------------------------------------------------------------    
+	--------------------------------------------------------------------------------------------------------------------------    
 		SET @step = 'IMPORT SUMMARY';
 		--------------------------------------------------------------------------------------------------------------------------
 		SET @errors_global=@errors_global+@errors;
@@ -435,12 +449,7 @@ BEGIN
 		SET @rows_deleted_global=@rows_deleted_global+@rows_deleted;
 		SET @rows_inserted_global=@rows_inserted_global+@rows_inserted;
 		SET @rows_updated_global=@rows_updated_global+@rows_updated;
-		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))
-		SET @data= convert(varchar(20),getdate(),120) +' #' + convert(varchar(10),@imports_fetched) + ') import_id=' + convert(varchar(10),@import_id) 
-		+ '. Errors = ' + convert(varchar(10),@errors)  + '. Warnings = ' + convert(varchar(10),@warnings) 
-		+ '. Deleted = ' + convert(varchar(10),@rows_deleted) 
-		+ '. Inserted = ' + convert(varchar(10),@rows_inserted) 
-		+ '. It took ' + convert(varchar(10),@duration) + ' sec.';	
+		SET @duration=convert(real,format(DATEDIFF(MILLISECOND,@start_time_import,getdate())/1000.0,'N3'))    
 		
 		SET  @data='{}'
 		SET  @data=JSON_MODIFY( @data,'$.N',CONVERT(varchar(10), @imports_fetched))
@@ -449,34 +458,22 @@ BEGIN
 		SET  @data=JSON_MODIFY( @data,'$.Deleted',CONVERT(varchar(10), @rows_deleted))
 		SET  @data=JSON_MODIFY( @data,'$.Inserted',CONVERT(varchar(10), @rows_inserted))
 		SET  @data=JSON_MODIFY( @data,'$.Updated',CONVERT(varchar(10), @rows_updated))
-
-		IF @errors=0 BEGIN 
-			EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-			, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
+		SET  @data=JSON_MODIFY( @data,'$.DateImportFrom',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_from),126)))
+		SET  @data=JSON_MODIFY( @data,'$.DateImportUntil',CONVERT(varchar(10), convert(char(10),convert(date,@date_import_until),126)))	
+ 
+        IF @commands like '%-LOG_IMPORT%' AND @errors=0 BEGIN 
+            EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Succeeded', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+            , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@warnings; 
+        END
+        IF @errors>0  BEGIN   EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
+        , @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
 		END
-		ELSE EXEC dbo.[A_SP_SYS_LOG] @category='MAIS SP', @result='Failed', @session=@session_id, @site = @site_id, @object=@SP, @object_sub=@procedure_name
-		, @object_id=@import_id, @step=@step, @data=@data, @duration=@duration, @value=@errors; 	 
-		
+ 
 		SET @data= convert(varchar(20),getdate(),120) +' #' + convert(varchar(10),@imports_fetched) + ') import_id=' + convert(varchar(10),@import_id) + ' duration=' + convert(varchar(10),@duration) + ' ' +  @data;
 		SET @output=@output + @data  + '</br>';
 		PRINT @data;
 		
-
-		/*
-		
-		set @data = left((concat(concat('{"p1":"',@p1,'",'),
-        concat('"p2":"',@p2,'",'),
-        concat('"p3":"',@p3,'",'),
-        concat('"p4":"',@p4,'",'),
-        concat('"p5":"',@p5,'"}')) 
-        ),4000);
-        set @data=JSON_MODIFY( @data,'$.filter',@filter);
-        set @data=JSON_MODIFY( @data,'$.group_by',@date);
-        set @data=JSON_MODIFY( @data,'$.fields_source',@fields_source);
-        set @data=JSON_MODIFY( @data,'$.fields_target',@fields_target);
 		 
-		*/
-
     FETCH NEXT FROM TAB_CURSOR 
     INTO @import_id 
         ,@activity_id
