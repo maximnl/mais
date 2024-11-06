@@ -3,6 +3,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
+
 -- stored procedure for regresion base transformation of time lagged timeserie data value1
 ALTER  PROCEDURE [dbo].[A_SP_FC_REG]
  @activity_id int = 0 
@@ -370,10 +371,38 @@ BEGIN
     group by T.date
     )
 
+
+    , RES_1 
+    as 
+    (
+        select date
+        ,case when value2<0 then 0 else value2  end value2
+        ,case when value3<0 then 0 else value3  end value3
+        ,case when value4<0 then 0 else value4  end value4
+        ,case when value5<0 then 0 else value5  end value5
+        ,case when value6<0 then 0 else value6  end value6
+        ,value7
+        from RES
+    )
+    , RES_EIND AS(
+        select date
+        ,value2+value3+value4+value5+value6 as value1
+        ,value2
+        ,value3
+        ,value4
+        ,value5
+        ,value6
+        ,null as value7
+        ,value3+value4+value5+value6 as value8
+        ,null value9
+        ,null value10
+        from RES_1
+    )
+
     INSERT INTO '+ @fact_day 
     +' ([date],activity_id,forecast_id, import_id,' + @fields_target + ',site_id) 
     select date,' +  convert(varchar(max),@activity_id)  
-    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_source + ',' + convert(nvarchar(max),@site_id) + ' FROM RES;'       
+    + ', ' +  convert(varchar(max),@forecast_id) + ','+ convert(varchar(max),@import_id) + ',' + @fields_source + ',' + convert(nvarchar(max),@site_id) + ' FROM RES_EIND;'       
 					
 -- SNIPPET QUERY EXECUTE START ********************************************************
 		SET @start_time_step     = GETDATE();
