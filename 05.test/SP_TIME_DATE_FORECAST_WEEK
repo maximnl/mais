@@ -1,0 +1,35 @@
+
+-- experimental; assigne forecast week from a file 
+-- with D as 
+(select A day_week_set, B as [week], year , week_fc FROM 
+(SELECT 
+[A] -- day_week_set
+      ,[B]  -- week
+      ,[C]  -- 2015
+      ,[D]  -- 2016
+      ,[E]
+      ,[F]
+      ,[G]
+      ,[H]
+      ,[I]
+      ,[J]
+      ,[K]
+      ,[L]
+      ,M
+      ,N
+  FROM [dbo].[A_SOURCE_FILE]
+  where file_id=891) AS s
+  UNPIVOT  (week_fc for year in (C,D,E,F,G,H,I,J,K,L,M,N)) as unpvt
+)
+,DD as (select day_week_set, week
+, 2015 + ASCII(year)-67  year -- starting from column C = 2015 ( C has ascii 67)
+, week_fc    
+, case when week_fc=1 then 202500+week when week_fc=0 then null else week_fc end year_week_fc
+from D
+where week_fc>''
+)
+
+update dimdate 
+SET year_next_week_fc= DD.year_week_fc
+from [dbo].[A_TIME_DATE] dimdate 
+inner join DD on dimdate.year52=DD.year and dimdate.day_week_set=DD.day_week_set and dimdate.[week]=DD.[week]
