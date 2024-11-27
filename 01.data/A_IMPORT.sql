@@ -1,10 +1,8 @@
 SET ANSI_NULLS ON
 GO
-
 SET QUOTED_IDENTIFIER ON
 GO
-
-CREATE TABLE [A_IMPORT](
+CREATE TABLE [dbo].[A_IMPORT](
 	[import_id] [int] IDENTITY(1,1) NOT NULL,
 	[import_code] [nvarchar](50) NULL,
 	[domain] [nvarchar](50) NULL,
@@ -40,23 +38,19 @@ CREATE TABLE [A_IMPORT](
 	[date_created] [datetime] NULL,
 	[import_guid] [nvarchar](40) NULL,
 	[timestamp] [timestamp] NULL,
- CONSTRAINT [PK_A_STG_IMPORT] PRIMARY KEY CLUSTERED 
-(
-	[import_id] ASC
-)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF) ON [PRIMARY]
+	[file_id] [int] NULL
 ) ON [PRIMARY]
 GO
-
-ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_active]  DEFAULT ((1)) FOR [active]
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [PK_A_STG_IMPORT] PRIMARY KEY CLUSTERED 
+(
+	[import_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
-
-ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_active]  DEFAULT ((1)) FOR [active]
 GO
-
-ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created_1]  DEFAULT (getdate()) FOR [date_created]
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_updated_1]  DEFAULT (getdate()) FOR [date_updated]
 GO
-
-ALTER TABLE [A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_import_guid]  DEFAULT (newid()) FOR [import_guid]
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_date_created_1]  DEFAULT (getdate()) FOR [date_created]
 GO
-
-
+ALTER TABLE [dbo].[A_IMPORT] ADD  CONSTRAINT [DF_A_IMPORT_import_guid]  DEFAULT (newid()) FOR [import_guid]
+GO
